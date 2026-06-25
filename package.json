@@ -1,0 +1,29 @@
+{
+	"name": "hono-spa-spike",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build && vite build --mode server",
+		"preview": "wrangler pages dev",
+		"deploy": "pnpm run build && wrangler pages deploy",
+		"cf-typegen": "wrangler types --env-interface CloudflareBindings"
+	},
+	"dependencies": {
+		"@preact/signals": "^2.9.2",
+		"hono": "^4.12.26",
+		"preact": "^10.29.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.0",
+		"@cloudflare/workers-types": "^4.20260619.1",
+		"@hono/vite-build": "^1.11.1",
+		"@hono/vite-dev-server": "^0.26.0",
+		"@preact/preset-vite": "^2.10.5",
+		"@tailwindcss/vite": "^4.3.1",
+		"tailwindcss": "^4.3.1",
+		"typescript": "^6.0.3",
+		"vite": "^8.0.16",
+		"vite-plugin-pwa": "^1.3.0",
+		"wrangler": "^4.4.0"
+	}
+}

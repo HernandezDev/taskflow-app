@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Opcional: Para asegurarnos de que el fondo de la app sea agradable */
+@theme {
+  --color-hono: #E36002;
+}
+
+body {
+  background-color: #f3f4f6; /* Un gris muy clarito */
+}

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    
+    "composite": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
+    
+    // Entorno puro del Edge (Cloudflare)
+    "lib": ["ESNext"],
+    "types": ["vite/client","@cloudflare/workers-types"],
+    
+    "paths": {
+      "@server/*": ["./src/server/*"]
+    }
+  },
+  // Restringimos su visión solo a la carpeta del servidor
+  "include": ["src/server"]
+}

@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    
+    // Banderas obligatorias para monorepos lógicos
+    "composite": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
+    
+    // Entorno puro del Navegador
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    
+    // Todo lo relacionado con Preact va aquí
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "paths": {
+      "react": ["./node_modules/preact/compat"],
+      "react-dom": ["./node_modules/preact/compat"],
+      "react/jsx-runtime": ["./node_modules/preact/jsx-runtime"],
+      "@server/*": ["./src/server/*"]
+    }
+  },
+  // Restringimos su visión solo a la carpeta del cliente
+  "include": ["src/client"],
+  "references": [
+    { "path": "./tsconfig.server.json" }
+  ]
+}
