@@ -79,3 +79,13 @@ graph TD
     class UI,MVVM,RPC client;
     class API,ORM server;
     class D1 database;
+ ```
+---
+
+## Ecosistema de Gestión de Estado y Red
+
+| Herramienta | Caso de Uso Ideal | Nivel de Lógica | ¿Dónde vive la instancia? |
+| :--- | :--- | :--- | :--- |
+| **`useRpcQuery`** | Mostrar un dato simple (ej. un dropdown, un widget estático). | Nula (Solo lectura). | Ciclo de vida del Componente (Efímero). |
+| **`useModel`** | Una pantalla interactiva completa (ej. Tablero, Formulario complejo). | Alta (Reglas de negocio, Mutaciones, Cálculos). | Ciclo de vida del Componente (Efímero). |
+| **Store Global** | Datos que viajan con el usuario por toda la app (ej. Sesión, Tema). | Alta (Negocio Global, Sincronización en segundo plano). | Exportado en un Archivo (Singleton / Memoria persistente). |
