@@ -3,7 +3,15 @@
 	"name": "hono-spa-spike",
 	"compatibility_date": "2026-06-20",
 	"pages_build_output_dir": "./dist",
-	"compatibility_flags": ["nodejs_compat"]
+	"compatibility_flags": ["nodejs_compat"],
+	"d1_databases": [
+    {
+      "binding": "DB", // Este es el nombre clave que Hono buscará
+      "database_name": "taskflow_db", // El nombre de tu base de datos
+      "database_id": "local-dev", // Un ID falso para desarrollo local
+      "migrations_dir": "drizzle" // La carpeta donde Drizzle guardó los .sql
+    }
+  ]
 	// "vars": {
 	//   "MY_VAR": "my-variable"
 	// },
