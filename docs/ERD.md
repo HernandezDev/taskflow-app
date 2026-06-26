@@ -1,3 +1,6 @@
+# Diagrama Entidad-Relación (DER)
+
+```mermaid
 erDiagram
 
     account {
@@ -25,6 +28,15 @@ erDiagram
         text user_agent
         text user_id "not null"
     }
+    task {
+        text id PK "not null"
+        text title "not null"
+        text status "not null, default: 'PENDING'"
+        integer deadline
+        text user_id "not null"
+        integer created_at "not null, default: `(cast(unixepoch('subsecond') * 1000 as integer))`"
+        integer updated_at "not null, default: `(cast(unixepoch('subsecond') * 1000 as integer))`"
+    }
     user {
         text id PK "not null"
         text name "not null"
@@ -42,15 +54,7 @@ erDiagram
         integer created_at "not null, default: `(cast(unixepoch('subsecond') * 1000 as integer))`"
         integer updated_at "not null, default: `(cast(unixepoch('subsecond') * 1000 as integer))`"
     }
-    task {
-        text id PK "not null"
-        text title "not null"
-        text status "not null, default: 'PENDING'"
-        integer deadline
-        text user_id "not null"
-        integer created_at "not null, default: `(cast(unixepoch('subsecond') * 1000 as integer))`"
-        integer updated_at "not null, default: `(cast(unixepoch('subsecond') * 1000 as integer))`"
-    }
 account ||--o{ user : "account-user"
 session ||--o{ user : "session-user"
 task ||--|| user : "task-user"
+```

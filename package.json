@@ -7,7 +7,7 @@
 		"preview": "wrangler pages dev",
 		"deploy": "pnpm run build && wrangler pages deploy",
 		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
-		"docs:erd": "drizzle-mermaid-generator -d sqlite -s ./src/server/db/index.ts -o ./docs/ERD.mermaid -r",
+		"docs:erd": "tsx scripts/docs.ts",
 		"db:generate": "drizzle-kit generate"
 	},
 	"dependencies": {
