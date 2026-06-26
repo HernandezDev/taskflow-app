@@ -89,3 +89,12 @@ graph TD
 | **`useRpcQuery`** | Mostrar un dato simple (ej. un dropdown, un widget estático). | Nula (Solo lectura). | Ciclo de vida del Componente (Efímero). |
 | **`useModel`** | Una pantalla interactiva completa (ej. Tablero, Formulario complejo). | Alta (Reglas de negocio, Mutaciones, Cálculos). | Ciclo de vida del Componente (Efímero). |
 | **Store Global** | Datos que viajan con el usuario por toda la app (ej. Sesión, Tema). | Alta (Negocio Global, Sincronización en segundo plano). | Exportado en un Archivo (Singleton / Memoria persistente). |
+
+
+### La "Piedra Rosetta" del Estado Frontend (Moderno)
+
+| Nivel de Escala | Taskflow (Tu Arquitectura) | Next.js (App Router) | SvelteKit (Svelte 5) |
+| :--- | :--- | :--- | :--- |
+| **1. Destornillador** (Lectura Simple) | `useRpcQuery` | Server Components (`fetch`) / SWR | Funciones `load` (`+page.ts`) y lecturas con `$props()` |
+| **2. Sala de Control** (ViewModel Efímero) | `createRpcModel` + `useModel` | Custom Hooks + *Server Actions* | Clases o funciones con `$state` instanciadas localmente |
+| **3. La Bóveda** (Estado Global) | Singleton Store exportado | *Zustand* / Context API | Archivo `.ts` exportando un `$state` global (Singleton) |
