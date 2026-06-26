@@ -11,6 +11,9 @@ importers:
       '@preact/signals':
         specifier: ^2.9.2
         version: 2.9.2(preact@10.29.2)
+      '@preact/signals-core':
+        specifier: ^1.14.3
+        version: 1.14.3
       better-auth:
         specifier: ^1.6.20
         version: 1.6.20(@cloudflare/workers-types@4.20260621.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260621.1)(kysely@0.29.2))

@@ -1,4 +1,4 @@
-import { createModel, signal } from "@preact/signals";
+import { createModel, signal } from "@preact/signals-core";
 
 /**
  * Fábrica de modelos reactivos puros para gestionar peticiones RPC.
