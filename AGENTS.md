@@ -15,8 +15,11 @@ Este documento centraliza de forma estricta las reglas arquitectónicas, restric
 
 ## 2. Capa de Frontend (Preact & Reactividad Granular)
 
-### 2.1 Restricción Absoluta de React Hooks
-Está **ESTRICTAMENTE PROHIBIDO** importar o utilizar: `useState`, `useReducer`, `useMemo` o `useCallback`. Toda la reactividad, derivación de estado y control de efectos secundarios debe ser gestionada exclusivamente mediante las primitivas detalladas en la sección 3.
+### 2.1 Restricción Principal de React Hooks (Capa de Datos)
+Está **ESTRICTAMENTE PROHIBIDO** importar o utilizar: `useState`, `useReducer`, `useMemo` o `useCallback` para gestionar la lógica de negocio, peticiones de red o el estado global de la aplicación. Toda la reactividad, derivación de estado y control de efectos secundarios debe ser gestionada exclusivamente mediante las primitivas de Signals detalladas en la sección 3.
+
+### 2.2 Excepción Estricta de Enrutamiento (Capa de Vista)
+La prohibición de hooks nativos aplica a la capa de dominio. Se permite el uso implícito de hooks nativos de forma exclusiva por parte de la librería de enrutamiento oficial elegida (**`wouter-preact`**). Dado que su responsabilidad está confinada estrictamente a la Capa de Vista (decidir qué componente renderizar basándose en la URL), su uso no contamina el estado del dominio ni viola la arquitectura de desacoplamiento.
 
 ---
 
@@ -65,72 +68,61 @@ Abstracciones para acoplar el grafo reactivo al ciclo de vida de los componentes
 ### 3.3 `@preact/signals/utils` (Componentes de Control Estricto y Utilidades)
 Componentes funcionales de optimización estructural para el árbol JSX que reemplazan las estructuras lógicas nativas de JavaScript.
 
-* **`<Show>`**: Reemplaza de forma mandatoria los operadores ternarios (`condition ? <A/> : <B/>`) basados en expresiones reactivas. Previene reflows innecesarios evaluando el estado de manera eficiente:
-    ```jsx
-    <Show when={isVisible} fallback={<p>Acceso denegado</p>}>
-      {/* Soporta renderizado directo o función inyectada con el valor actual */}
-      {(value) => <AdminPanel data={value} />}
-    </Show>
-    ```
-* **`<For>`**: Reemplaza de forma obligatoria el método clásico `array.map()` al renderizar colecciones basadas en arrays reactivos. Implementa de manera nativa un mecanismo de caché indexada que congela y reutiliza los elementos del DOM mutados, evitando re-renders masivos al insertar, mover o eliminar ítems de la lista.
-    ```jsx
-    <For each={items} fallback={<p>No hay registros disponibles</p>}>
-      {(item, index) => <div key={index}>Registro: {item}</div>}
-    </For>
-    ```
-* **`useLiveSignal(externalSignal)`**: Hook utilitario para generar un signal local sincronizado automáticamente y de forma unidireccional ante cualquier mutación de un signal externo u observable de infraestructura.
-* **`useSignalRef(initialValue)`**: Genera una primitiva que unifica la interfaz de un `Ref` de Preact (vía `.current`) con la reactividad de un signal. Permite atrapar de forma reactiva mutaciones sobre referencias físicas de elementos del DOM.
+* **`<Show>`**: Reemplaza de forma mandatoria los operadores ternarios (`condition ? <A/> : <B/>`) basados en expresiones reactivas. Previene reflows innecesarios evaluando el estado de manera eficiente.
+* **`<For>`**: Reemplaza de forma obligatoria el método clásico `array.map()` al renderizar colecciones basadas en arrays reactivos. Implementa de manera nativa un mecanismo de caché indexada que congela y reutiliza los elementos del DOM mutados.
+* **`useLiveSignal(externalSignal)`**: Hook utilitario para generar un signal local sincronizado automáticamente.
+* **`useSignalRef(initialValue)`**: Genera una primitiva que unifica la interfaz de un `Ref` de Preact (vía `.current`) con la reactividad de un signal.
+
+### 3.4 Prohibición Estricta de Gestores de Estado y Caché Externos
+Queda **ESTRICTAMENTE PROHIBIDA** la instalación e integración de librerías de gestión de estado global (Redux, Zustand, Jotai, Valtio, Pinia) o clientes de caché de servidor (React Query, SWR, RTK Query). 
+
+* **Estado Global de UI:** El motor `@preact/signals-core` opera de forma agnóstica a la capa de vista. Cualquier componente que lo importe se suscribirá automáticamente sin necesidad de envoltorios `<Provider>`.
+* **Estado de Red y Caché:** La gestión de estados asíncronos se delega EXCLUSIVAMENTE a la infraestructura E2E mediante Hono RPC y el hook de control `useRpcQuery`.
+
+### 3.5 Gestión de Autenticación y Sesión (Better Auth)
+El control de identidad, sesión y autenticación se gestiona exclusivamente a través del cliente **Vanilla** (agnóstico) de **Better Auth**. Su estado debe encapsularse en un módulo de TypeScript puro (ej. `authStore.ts`) utilizando `@preact/signals-core`, manteniéndolo fuera del ciclo de vida de Preact. Queda terminantemente prohibido el uso de *Context Providers* de React/Preact para distribuir la sesión del usuario en el árbol de componentes.
+
+### 3.6 Excepción de Interoperabilidad (Zona de Cuarentena para Librerías React)
+Al utilizar `preact/compat` para consumir librerías de terceros complejas (ej. DataGrids, Drag & Drop), se establece la siguiente excepción:
+
+* **Wrappers de Aislamiento:** Se permite el uso de hooks tradicionales **ÚNICA Y EXCLUSIVAMENTE** dentro de componentes adaptadores ("Wrappers"). El único propósito de este archivo será conectar el ecosistema limpio de Signals con el ecosistema de la librería externa.
+* **Prohibición de Fuga:** La lógica nativa de React de estos componentes nunca debe filtrarse hacia los controladores de dominio (`createModel`) ni a la estructura principal de la UI. Deberán aislarse en `src/client/components/vendors/`.
 
 ---
-### 3.4 Prohibición Estricta de Gestores de Estado y Caché Externos
-Queda **ESTRICTAMENTE PROHIBIDA** la instalación e integración de librerías de gestión de estado global (Redux, Zustand, Jotai, Valtio, Pinia) o clientes de caché de servidor (React Query, SWR, RTK Query). La arquitectura actual las hace funcionalmente obsoletas, añaden latencia en la evaluación del cliente e incrementan innecesariamente el tamaño del bundle.
-
-* **Estado Global de UI:** El motor `@preact/signals-core` opera de forma agnóstica a la capa de vista. Para compartir estado entre componentes sin *prop-drilling*, instancia un `signal()` o un `createModel()` en un archivo TypeScript puro (ej. `src/client/store/`) y expórtalo como un Singleton. Cualquier componente que lo importe se suscribirá automáticamente sin necesidad de envoltorios `<Provider>`.
-* **Estado de Red y Caché:** La gestión de estados asíncronos, reintentos, promesas en vuelo y abortos de peticiones se delega EXCLUSIVAMENTE a la infraestructura E2E mediante Hono RPC y el hook de control `useRpcQuery`.
-
-### 3.5 Excepción de Interoperabilidad (Zona de Cuarentena para Librerías React)
-
-El ecosistema de dependencias está fuertemente acoplado a React. Al utilizar `preact/compat` para consumir librerías de terceros (ej. librerías de animaciones complejas, DataGrids, Drag & Drop) que exigen en su API el uso de patrones clásicos, se establece la siguiente excepción arquitectónica:
-
-* **Wrappers de Aislamiento:** Se permite el uso de hooks tradicionales (`useEffect`, `useRef`, `useCallback`, `useState`) **ÚNICA Y EXCLUSIVAMENTE** dentro de componentes adaptadores ("Wrappers"). El único propósito de este archivo será conectar el ecosistema limpio de Signals con el ecosistema sucio de la librería externa.
-* **Patrón de Traducción:** El Wrapper actúa como una frontera estricta. Recibe un `signal` (o lo lee del store), lo traduce al formato que la librería de React exige (usando `useSignalEffect` para sincronizar), e intercepta los eventos de la librería para mutar el `signal` de vuelta.
-* **Prohibición de Fuga:** Bajo ninguna circunstancia la lógica nativa de React de estos componentes de terceros debe filtrarse hacia los controladores de dominio (`createModel`) o a la estructura principal de la UI.
-* **Ubicación Estricta:** Cualquier componente que aplique esta excepción deberá aislarse físicamente en una ruta dedicada, como `src/client/components/vendors/`.
 
 ## 4. Capa de Backend (Hono) y Base de Datos (Cloudflare D1)
 
-* **Framework:** **Hono**, configurado para entornos Edge rápidos y con consumo mínimo de memoria.
+* **Framework:** **Hono**, configurado con patrón *Lazy-Singleton* para inicialización diferida orientada a mitigar el *Cold Start* en el entorno Edge.
 * **Base de Datos:** **Cloudflare D1** (arquitectura SQLite nativa de Cloudflare).
-* **ORM:** **Drizzle ORM**. Las consultas deben optimizarse mediante *prepared statements* y transacciones atómicas para cumplir con los límites de concurrencia y latencia impuestos por D1.
-* **Patrón de Rutas:** Uso mandatorio de rutas encadenadas para exportar un tipo estricto unificado (`AppType`). Este tipo sirve de contrato inmutable con el frontend.
+* **ORM:** **Drizzle ORM**. Las consultas deben optimizarse mediante *prepared statements*. La inicialización de la conexión a D1 debe mantenerse físicamente separada entre la lógica de negocio y la infraestructura de Autenticación para garantizar el desacoplamiento de dominios.
+* **Patrón de Rutas:** Uso mandatorio de rutas encadenadas para exportar un tipo estricto unificado (`AppType`). 
 
 ---
 
-## 5. Comunicación E2E (Hono RPC) y Mitigación de Race Conditions
+## 5. Comunicación E2E (Hono RPC) y Validación Estricta
 
-### 5.1 Tipado de Red de Extremo a Extremo (E2E)
+### 5.1 Tipado de Red y Validación E2E (Zod + Hono RPC)
 * El frontend consume la API del servidor exclusivamente a través del cliente Hono RPC generado mediante `hc<AppType>`.
-* Existe un cliente único (Singleton) localizado en `src/client/lib/api.ts` que intercepta la función `fetch` nativa para inyectar configuraciones globales necesarias (encabezados de autenticación, telemetría, gestión de credenciales).
+* **Contrato de Datos (Zod):** El contrato de tipos expuesto en `AppType` debe ser generado obligatoriamente infiriendo los esquemas de validación de **Zod** mediante el middleware `@hono/zod-validator`. 
+* Toda ruta que reciba *payloads* (cuerpos JSON en POST/PUT/PATCH o parámetros de query) debe validar de forma síncrona su entrada con Zod para garantizar una política *Fail-Fast* antes de ejecutar cualquier lógica de negocio o consulta a la base de datos D1.
 
 ### 5.2 Control estricto de Peticiones y Ciclo de Vida (`useRpcQuery`)
 * Toda carga inicial de datos o query asíncrona del lado del cliente **SIEMPRE** se encapsulará en el hook de infraestructura `useRpcQuery`.
-* Este hook instancia internamente un `AbortController`. Es obligatorio pasar el `AbortSignal` obtenido al segundo argumento (`RequestInit`) de la llamada del cliente Hono RPC. 
-* **Objetivo:** Si el componente se desmonta antes de que la promesa se resuelva, la petición de red se cancela de inmediato, evitando *race conditions* en el cliente y ahorrando ciclos de cómputo/facturación en las funciones Edge de Cloudflare.
+* Este hook instancia internamente un `AbortController`. Es obligatorio pasar el `AbortSignal` obtenido al segundo argumento (`RequestInit`) de la llamada del cliente Hono RPC para cancelar peticiones al desmontar componentes y mitigar *race conditions*.
 
 ---
 
 ## 6. Configuración de TypeScript y Organización Feature-Lite
 
 ### 6.1 Restricciones de TypeScript (Project References)
-* Se implementa **TypeScript Project References** con un orquestador raíz.
-* `tsconfig.client.json`: Configuración estricta orientada exclusivamente al entorno DOM.
-* `tsconfig.server.json`: Configuración estricta orientada al entorno Cloudflare Edge (Worker runtime).
-* **Aislamiento de Lógica:** El frontend solo consume tipos abstractos mediante las referencias configuradas. Queda estrictamente prohibido importar código ejecutable del backend en los bundles de Vite.
-* **Sintaxis de Módulos:** `verbatimModuleSyntax` está habilitado por directiva global. Al cruzar la frontera entre frontend y backend, es obligatorio declarar las importaciones explicientemente mediante `import type`.
+* Se implementa **TypeScript Project References** con un orquestador raíz (`tsconfig.client.json` y `tsconfig.server.json`).
+* **Sintaxis de Módulos:** `verbatimModuleSyntax` está habilitado. Al cruzar la frontera entre frontend y backend, es obligatorio declarar las importaciones explicientemente mediante `import type`.
 
 ### 6.2 Organización de Archivos (Feature-Lite)
 El código debe estructurarse estrictamente bajo los siguientes directorios para preservar la modularidad física y lógica del monorepo:
 
-* `src/client/lib/` -> Infraestructura de red y hooks base abstractos (`api.ts`, `useRpcQuery.ts`).
-* `src/client/hooks/` -> Hooks orientados al dominio del negocio (especializaciones de queries que consumen la infraestructura).
-* `src/client/components/` -> Componentes puramente visuales, layout y ensamblaje JSX que consumen los hooks de dominio o instancian modelos locales.
+* `src/client/lib/` -> Infraestructura de red, configuración de clientes (Better Auth, Hono) y abstracciones base.
+* `src/client/store/` -> Estado global agnóstico y Singleton (ej. `authStore.ts`) utilizando `@preact/signals-core`.
+* `src/client/hooks/` -> Hooks orientados al dominio del negocio que consumen la infraestructura (ej. implementaciones de `useRpcQuery`).
+* `src/client/pages/` -> Vistas principales mapeadas directamente a las rutas del enrutador (`wouter-preact`).
+* `src/client/components/` -> Componentes puramente visuales, layout y ensamblaje JSX.
