@@ -4,14 +4,17 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../db";
 
-// 1. FÁBRICA DE PRODUCCIÓN (Se inyecta en Hono por petición)
-export const createAuth = (db_binding: D1Database, baseURL?: string, secret?: string) => {
-	const db = drizzle(db_binding);
+export const createAuth = (config: { database: D1Database; secret: string; baseURL: string }) => {
+	// Usamos el esquema que ya definiste en tu proyecto
+	const db = drizzle(config.database, { schema });
 
 	return betterAuth({
-		baseURL,
-		secret,
-		database: drizzleAdapter(db, { provider: "sqlite", schema }),
+		baseURL: config.baseURL,
+		secret: config.secret,
+		database: drizzleAdapter(db, {
+			provider: "sqlite",
+			schema,
+		}),
 		advanced: {
 			ipAddress: { ipAddressHeaders: ["CF-Connecting-IP"] },
 		},
