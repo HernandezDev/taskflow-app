@@ -126,3 +126,64 @@ El código debe estructurarse estrictamente bajo los siguientes directorios para
 * `src/client/hooks/` -> Hooks orientados al dominio del negocio que consumen la infraestructura (ej. implementaciones de `useRpcQuery`).
 * `src/client/pages/` -> Vistas principales mapeadas directamente a las rutas del enrutador (`wouter-preact`).
 * `src/client/components/` -> Componentes puramente visuales, layout y ensamblaje JSX.
+---
+
+## Patrones de Interfaz: View Transitions API con Wouter (Preact)
+
+**Estado:** 🟡 Pendiente de validación en entorno local.
+**Objetivo:** Lograr transiciones animadas nativas entre rutas sin añadir librerías de animación ni inflar el bundle de JavaScript.
+
+### El Problema con la Documentación Oficial
+La documentación de `wouter` sugiere habilitar la View Transitions API interceptando la navegación a través de la propiedad `aroundNav`. Sin embargo, el ejemplo oficial exige importar `flushSync` de `react-dom`:
+
+```typescript
+// ❌ ANTI-PATRÓN (PROHIBIDO EN ESTA ARQUITECTURA)
+import { flushSync } from "react-dom";
+```
+*Motivo del rechazo:* Importar `react-dom` rompe nuestras directrices de dependencias, destruye la ventaja competitiva de usar Preact e infla el bundle con más de 100KB innecesarios. En React, `flushSync` es obligatorio porque su motor de renderizado es asíncrono (Concurrent Mode) y el navegador requiere que el cambio del DOM para las transiciones sea síncrono.
+
+### La Solución Optimizada para Preact
+Dado que Preact aplica las actualizaciones del DOM de forma mucho más directa y rápida, **no necesitamos `flushSync`**. Podemos envolver la función `Maps` de Wouter directamente dentro de la API nativa del navegador.
+
+#### Implementación del Enrutador (App.tsx)
+
+```tsx
+import { Router, Switch, Route } from "wouter-preact";
+
+// Interceptor global de navegación
+const aroundNav = (navigate: any, to: string, options: any) => {
+  // 1. Verificación de soporte nativo y solicitud explícita
+  if (!document.startViewTransition || !options?.transition) {
+    navigate(to, options);
+    return;
+  }
+
+  // 2. Ejecución síncrona optimizada para Preact
+  document.startViewTransition(() => {
+    navigate(to, options);
+  });
+};
+
+// Inyección en la raíz de la app
+export const App = () => (
+  <Router aroundNav={aroundNav}>
+    {/* Rutas... */}
+  </Router>
+);
+```
+
+#### Uso en Componentes
+Para activar la transición al cambiar de ruta, simplemente se debe pasar el flag `transition: true` en las opciones de navegación o como prop en el componente `<Link>`.
+
+```tsx
+import { Link, useLocation } from "wouter-preact";
+
+// Vía componente HTML
+<Link to="/dashboard" transition>Ir al Dashboard animado</Link>
+
+// Vía programación (Hook)
+const [_, navigate] = useLocation();
+const handleSubmit = () => {
+    navigate("/dashboard", { transition: true });
+}
+```
