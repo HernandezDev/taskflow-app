@@ -1,7 +1,8 @@
 import { computed, createModel, signal } from "@preact/signals-core";
 
 /**
- * Fábrica de modelos reactivos puros para gestionar peticiones RPC.
+ * Fábrica de modelos reactivos puros para gestionar peticiones RPC de Hono.
+ *
  */
 export function createRpcModel<T>(
 	fetchFn: (abortSignal: AbortSignal) => Promise<T>,
@@ -11,7 +12,6 @@ export function createRpcModel<T>(
 		const data = signal<T>(initialData);
 		const isLoading = signal<boolean>(true);
 		const error = signal<Error | null>(null);
-
 		let controller: AbortController | null = null;
 
 		const execute = () => {
@@ -36,14 +36,25 @@ export function createRpcModel<T>(
 				});
 		};
 
+		// Ejecución inicial automática
 		execute();
 
+		// Puerta controlada para mutaciones locales (Optimistic UI)
+		const mutate = (updater: (prevData: T) => T) => {
+			data.value = updater(data.value);
+		};
+
 		return {
-			// Empaquetado en computed para cumplir validación estricta de createModel
+			// Signals blindados (Solo lectura para la UI)
 			data: computed(() => data.value),
 			isLoading: computed(() => isLoading.value),
 			error: computed(() => error.value),
+
+			// Acciones
 			execute,
+			mutate,
+
+			// Destructor
 			[Symbol.dispose]() {
 				if (controller) controller.abort();
 			},
