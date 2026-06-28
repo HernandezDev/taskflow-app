@@ -71,5 +71,21 @@ export const authStore = createModel(() => {
 			userSignal.value = null;
 			isLoadingSignal.value = false;
 		},
+		// ... dentro del return de authStore
+		async signUp(email: string, password: string, name: string) {
+			isLoadingSignal.value = true;
+
+			// Llamada al cliente de Better Auth
+			const { data, error } = await authClient.signUp.email({
+				email,
+				password,
+				name,
+			});
+
+			// Si el registro fue exitoso, el usuario ya suele quedar logueado
+			// o puedes redirigirlo a login directamente
+			isLoadingSignal.value = false;
+			return { data, error };
+		},
 	};
 });
