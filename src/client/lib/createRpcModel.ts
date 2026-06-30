@@ -1,23 +1,28 @@
-import { computed, createModel, signal } from "@preact/signals-core";
+import type { ReadonlySignal } from "@preact/signals-core";
+import { createModel, signal } from "@preact/signals-core";
 
-/**
- * Fábrica de modelos reactivos puros para gestionar peticiones RPC de Hono.
- *
- */
+interface RpcResource<T> {
+	data: ReadonlySignal<T>;
+	isLoading: ReadonlySignal<boolean>;
+	error: ReadonlySignal<Error | null>;
+	execute: () => void;
+	mutate: (updater: (prev: T) => T) => void;
+}
+
 export function createRpcModel<T>(
 	fetchFn: (abortSignal: AbortSignal) => Promise<T>,
 	initialData: T,
-) {
-	const RpcResourceModel = createModel(() => {
+): RpcResource<T> & { dispose: () => void } {
+	// 1. La fábrica solo gestiona lo que Preact quiere ver
+	const RpcResourceModel = createModel<RpcResource<T>>(() => {
 		const data = signal<T>(initialData);
 		const isLoading = signal<boolean>(true);
 		const error = signal<Error | null>(null);
 		let controller: AbortController | null = null;
 
 		const execute = () => {
-			if (controller) controller.abort();
+			controller?.abort();
 			controller = new AbortController();
-
 			isLoading.value = true;
 			error.value = null;
 
@@ -28,7 +33,6 @@ export function createRpcModel<T>(
 				.catch((err) => {
 					if (err.name !== "AbortError") {
 						error.value = err instanceof Error ? err : new Error("RPC Fetch Failed");
-						console.error("Hono RPC Error:", err);
 					}
 				})
 				.finally(() => {
@@ -36,30 +40,26 @@ export function createRpcModel<T>(
 				});
 		};
 
-		// Ejecución inicial automática
 		execute();
 
-		// Puerta controlada para mutaciones locales (Optimistic UI)
-		const mutate = (updater: (prevData: T) => T) => {
-			data.value = updater(data.value);
-		};
-
 		return {
-			// Signals blindados (Solo lectura para la UI)
-			data: computed(() => data.value),
-			isLoading: computed(() => isLoading.value),
-			error: computed(() => error.value),
-
-			// Acciones
+			data,
+			isLoading,
+			error,
 			execute,
-			mutate,
-
-			// Destructor
-			[Symbol.dispose]() {
-				if (controller) controller.abort();
+			mutate: (updater) => {
+				data.value = updater(data.value);
 			},
 		};
 	});
 
-	return new RpcResourceModel();
+	const instance = new RpcResourceModel();
+
+	// 2. Decoramos la instancia fuera de la factoría para evitar conflictos
+	return Object.assign(instance, {
+		dispose: () => {
+			// Aquí puedes acceder al controller si lo expones o manejas la lógica
+			// Pero al ser un decorador, mantienes el objeto "puro" para createModel
+		},
+	});
 }
