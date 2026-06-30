@@ -1,7 +1,7 @@
 import type { ReadonlySignal } from "@preact/signals-core";
 import { createModel, signal } from "@preact/signals-core";
 
-interface RpcResource<T> {
+export interface RpcResource<T> {
 	data: ReadonlySignal<T>;
 	isLoading: ReadonlySignal<boolean>;
 	error: ReadonlySignal<Error | null>;
@@ -9,20 +9,23 @@ interface RpcResource<T> {
 	mutate: (updater: (prev: T) => T) => void;
 }
 
+// 1. Declaramos explícitamente que devolvemos un objeto con [Symbol.dispose]
 export function createRpcModel<T>(
 	fetchFn: (abortSignal: AbortSignal) => Promise<T>,
 	initialData: T,
-): RpcResource<T> & { dispose: () => void } {
-	// 1. La fábrica solo gestiona lo que Preact quiere ver
+): RpcResource<T> & { [Symbol.dispose]: () => void } {
+	// 2. Mantenemos el controller en el closure exterior para que el dispose pueda verlo
+	let controller: AbortController | null = null;
+
 	const RpcResourceModel = createModel<RpcResource<T>>(() => {
 		const data = signal<T>(initialData);
 		const isLoading = signal<boolean>(true);
 		const error = signal<Error | null>(null);
-		let controller: AbortController | null = null;
 
 		const execute = () => {
 			controller?.abort();
 			controller = new AbortController();
+
 			isLoading.value = true;
 			error.value = null;
 
@@ -53,13 +56,14 @@ export function createRpcModel<T>(
 		};
 	});
 
-	const instance = new RpcResourceModel();
+	// 3. Instanciamos el modelo
+	// Usamos 'as' para decirle a TS que vamos a inyectarle el Symbol.dispose
+	const instance = new RpcResourceModel() as RpcResource<T> & { [Symbol.dispose]: () => void };
 
-	// 2. Decoramos la instancia fuera de la factoría para evitar conflictos
-	return Object.assign(instance, {
-		dispose: () => {
-			// Aquí puedes acceder al controller si lo expones o manejas la lógica
-			// Pero al ser un decorador, mantienes el objeto "puro" para createModel
-		},
-	});
+	// 4. Se lo inyectamos directamente a la instancia (fuera del createModel)
+	instance[Symbol.dispose] = () => {
+		controller?.abort();
+	};
+
+	return instance;
 }

@@ -1,9 +1,12 @@
 // src/client/App.tsx
-import { useHint } from "../hooks/useHint";
+import { useModel } from "@preact/signals";
+import { createHintModel } from "../models/hint.model";
 
 export function App() {
-  // 1. ERGONOMÍA ABSOLUTA: Una sola línea de invocación
-  const { data, isLoading, error } = useHint();
+  // 1. ERGONOMÍA ABSOLUTA: 
+  // Acoplamos la fábrica del modelo al ciclo de vida del componente.
+  // Desestructuramos para no tener que tocar el JSX de abajo.
+  const { data, isLoading, error } = useModel(() => createHintModel());
 
   return (
     <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -25,7 +28,7 @@ export function App() {
           </p>
           
           <div class="bg-orange-50 text-orange-800 p-3 rounded-lg border border-orange-100 font-semibold shadow-inner flex items-center justify-center gap-2 min-h-12.5"> 
-            {/* 2. CONSUMO REACTIVO: Evaluamos el '.value' de las signals */}
+            {/* 2. CONSUMO REACTIVO: Seguimos evaluando el '.value' de los ReadonlySignals */}
             {isLoading.value ? (
               <span class="animate-pulse">Consultando...</span>
             ) : error.value ? (
