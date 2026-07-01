@@ -1,5 +1,5 @@
 import type { ReadonlySignal } from "@preact/signals-core";
-import { createModel, signal } from "@preact/signals-core";
+import { batch, createModel, signal } from "@preact/signals-core";
 
 export interface RpcResource<T> {
 	data: ReadonlySignal<T>;
@@ -9,12 +9,10 @@ export interface RpcResource<T> {
 	mutate: (updater: (prev: T) => T) => void;
 }
 
-// 1. Declaramos explícitamente que devolvemos un objeto con [Symbol.dispose]
 export function createRpcModel<T>(
 	fetchFn: (abortSignal: AbortSignal) => Promise<T>,
 	initialData: T,
 ): RpcResource<T> & { [Symbol.dispose]: () => void } {
-	// 2. Mantenemos el controller en el closure exterior para que el dispose pueda verlo
 	let controller: AbortController | null = null;
 
 	const RpcResourceModel = createModel<RpcResource<T>>(() => {
@@ -22,25 +20,42 @@ export function createRpcModel<T>(
 		const isLoading = signal<boolean>(true);
 		const error = signal<Error | null>(null);
 
-		const execute = () => {
+		// 2. Pasamos a async/await para controlar mejor el flujo
+		const execute = async () => {
 			controller?.abort();
 			controller = new AbortController();
 
-			isLoading.value = true;
-			error.value = null;
+			// Batch inicial: Limpiamos errores y activamos loading de golpe
+			batch(() => {
+				isLoading.value = true;
+				error.value = null;
+			});
 
-			fetchFn(controller.signal)
-				.then((res) => {
+			try {
+				const res = await fetchFn(controller.signal);
+
+				// Batch de éxito: Actualizamos datos y apagamos loading a la vez
+				batch(() => {
 					data.value = res;
-				})
-				.catch((err) => {
-					if (err.name !== "AbortError") {
-						error.value = err instanceof Error ? err : new Error("RPC Fetch Failed");
-					}
-				})
-				.finally(() => {
 					isLoading.value = false;
 				});
+			} catch (err: unknown) {
+				// Reemplazamos "any" por "unknown" por seguridad
+				// Comprobación Type-Safe para ver si es un AbortError
+				const isAbortError =
+					(err instanceof Error && err.name === "AbortError") ||
+					(err instanceof DOMException && err.name === "AbortError");
+
+				if (!isAbortError) {
+					// Batch de error: Asignamos error y apagamos loading a la vez
+					batch(() => {
+						error.value = err instanceof Error ? err : new Error("RPC Fetch Failed");
+						isLoading.value = false;
+					});
+				}
+				// Nota: Si ES un AbortError, significa que otra petición pisó a esta.
+				// Dejamos isLoading en true porque la nueva petición está en curso.
+			}
 		};
 
 		execute();
@@ -56,11 +71,8 @@ export function createRpcModel<T>(
 		};
 	});
 
-	// 3. Instanciamos el modelo
-	// Usamos 'as' para decirle a TS que vamos a inyectarle el Symbol.dispose
 	const instance = new RpcResourceModel() as RpcResource<T> & { [Symbol.dispose]: () => void };
 
-	// 4. Se lo inyectamos directamente a la instancia (fuera del createModel)
 	instance[Symbol.dispose] = () => {
 		controller?.abort();
 	};
