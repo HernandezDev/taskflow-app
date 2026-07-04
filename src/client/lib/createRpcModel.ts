@@ -1,11 +1,11 @@
 import type { ReadonlySignal } from "@preact/signals-core";
-import { batch, createModel, signal } from "@preact/signals-core";
+import { batch, createModel, effect, signal } from "@preact/signals-core";
 
 export interface RpcResource<T> {
 	data: ReadonlySignal<T>;
 	isLoading: ReadonlySignal<boolean>;
 	error: ReadonlySignal<Error | null>;
-	execute: () => void;
+	execute: () => Promise<void>;
 	mutate: (updater: (prev: T) => T) => void;
 }
 
@@ -13,14 +13,23 @@ export function createRpcModel<T>(
 	fetchFn: (abortSignal: AbortSignal) => Promise<T>,
 	initialData: T,
 ): RpcResource<T> & { [Symbol.dispose]: () => void } {
-	let controller: AbortController | null = null;
-
 	const RpcResourceModel = createModel<RpcResource<T>>(() => {
 		const data = signal<T>(initialData);
 		const isLoading = signal<boolean>(true);
 		const error = signal<Error | null>(null);
 
-		// 2. Pasamos a async/await para controlar mejor el flujo
+		// 1. El controlador ahora vive seguro dentro del closure del modelo
+		let controller: AbortController | null = null;
+
+		// 2. REGISTRO DE LIMPIEZA OFICIAL (Regla 3.3 de agents.md)
+		// createModel tomará esta función de retorno y la vinculará al Symbol.dispose
+		effect(() => {
+			return () => {
+				controller?.abort();
+			};
+		});
+
+		// Pasamos a async/await para controlar mejor el flujo
 		const execute = async () => {
 			controller?.abort();
 			controller = new AbortController();
@@ -40,7 +49,6 @@ export function createRpcModel<T>(
 					isLoading.value = false;
 				});
 			} catch (err: unknown) {
-				// Reemplazamos "any" por "unknown" por seguridad
 				// Comprobación Type-Safe para ver si es un AbortError
 				const isAbortError =
 					(err instanceof Error && err.name === "AbortError") ||
@@ -53,11 +61,12 @@ export function createRpcModel<T>(
 						isLoading.value = false;
 					});
 				}
-				// Nota: Si ES un AbortError, significa que otra petición pisó a esta.
-				// Dejamos isLoading en true porque la nueva petición está en curso.
+				// Nota: Si ES un AbortError, significa que otra petición pisó a esta o el componente se desmontó.
+				// Dejamos isLoading en true porque la nueva petición está en curso (o el componente ya no existe).
 			}
 		};
 
+		// Disparo inicial automático
 		execute();
 
 		return {
@@ -71,11 +80,7 @@ export function createRpcModel<T>(
 		};
 	});
 
-	const instance = new RpcResourceModel() as RpcResource<T> & { [Symbol.dispose]: () => void };
-
-	instance[Symbol.dispose] = () => {
-		controller?.abort();
-	};
-
-	return instance;
+	// 3. Retornamos la instancia pura.
+	// No hace falta mutarla; el motor ya orquestó el Symbol.dispose internamente.
+	return new RpcResourceModel() as RpcResource<T> & { [Symbol.dispose]: () => void };
 }
