@@ -2,6 +2,7 @@ import type { ComponentType } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { ErrorBoundary, LocationProvider, Route, Router, useLocation } from 'preact-iso';
 import { LoginScreen } from './pages/LoginScreen';
+import { SignupScreen } from './pages/SignupScreen';
 import { authStore } from './stores/authStore'; 
 
 // --- COMPONENTES PLACEHOLDER ---
@@ -51,6 +52,7 @@ export function App() {
       <ErrorBoundary onError={(e) => console.error("Crash visual de Preact:", e)}>
         <Router>
           <Route path="/" component={LoginScreen} />
+          <Route path="/signup" component={SignupScreen} />   
           <PrivateRoute path="/dashboard" component={DashboardScreen} />
           <Route default component={NotFoundScreen} />
         </Router>

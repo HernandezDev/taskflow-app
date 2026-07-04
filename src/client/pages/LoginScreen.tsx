@@ -85,6 +85,18 @@ export function LoginScreen() {
             {authStore.isPending.value ? "Conectando..." : "Entrar"}
           </button>
         </div>
+
+        {/* 4. Enlace para ir a Crear Cuenta */}
+        <div class="mt-6 text-center text-sm text-gray-600">
+          ¿No tienes una cuenta?{" "}
+          <button
+            type="button"
+            onClick={() => route("/signup")}
+            class="text-blue-600 hover:underline font-medium focus:outline-none"
+          >
+            Regístrate aquí
+          </button>
+        </div>
       </form>
     </div>
   );
