@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
 					"/@vite/**",
 					"/node_modules/**",
 					...defaultOptions.exclude,
+					/^\/(?!api).*/, // <-- Ignora toda ruta que NO empiece con "/api" dejando que Vite resuelva el SPA
 				],
 				injectClientScript: true,
 			}),
