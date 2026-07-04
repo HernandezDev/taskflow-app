@@ -1,3 +1,4 @@
+// src/client/stores/authStore.ts
 import type { ReadonlySignal } from "@preact/signals-core";
 import { batch, computed, createModel, signal } from "@preact/signals-core";
 import { authClient } from "../lib/auth-client";
@@ -17,8 +18,8 @@ export interface AuthStore {
 	logout(): Promise<void>;
 }
 
-// Creamos la fábrica del Store Global
-const AuthStoreModel = createModel<AuthStore>(() => {
+// Creamos la fábrica del Store Global (Renombrado para semántica correcta)
+const createAuthStore = createModel<AuthStore>(() => {
 	const sessionSignal = signal<Session | null>(null);
 	const userSignal = signal<User | null>(null);
 	const isLoadingSignal = signal<boolean>(false);
@@ -84,5 +85,5 @@ const AuthStoreModel = createModel<AuthStore>(() => {
 	};
 });
 
-// Exportamos la instancia única (Singleton)
-export const authStore = new AuthStoreModel();
+// Exportamos la instancia única (Singleton) usando el nuevo nombre
+export const authStore = new createAuthStore();
