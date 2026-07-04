@@ -1,48 +1,26 @@
-import type { ComponentType } from 'preact'; 
 import { useEffect } from 'preact/hooks';
-import { ErrorBoundary, LocationProvider, Route, Router, useLocation } from 'preact-iso';
+import { ErrorBoundary, LocationProvider, Route, Router } from 'preact-iso';
+// 2. Importamos nuestros guardianes modulares
+import { GuestRoute } from './components/router/GuestRoute';
+import { PrivateRoute } from './components/router/PrivateRoute';
+// 1. Importamos las pantallas
 import { DashboardScreen } from './pages/DashboardScreen';
 import { LoginScreen } from './pages/LoginScreen';
 import { SignupScreen } from './pages/SignupScreen';
+
+// 3. Importamos el estado global
 import { authStore } from './stores/authStore'; 
 
 // --- COMPONENTES PLACEHOLDER ---
-const NotFoundScreen = () => <div class="p-8 text-center text-red-500"><h1 class="text-2xl font-bold">404 - No encontrado</h1></div>;
-
-// 2. Definimos la interfaz estricta (¡Adiós 'any'!)
-interface PrivateRouteProps {
-  // biome-ignore lint/suspicious/noExplicitAny: El enrutador inyecta props dinámicas
-  component: ComponentType<any>;
-  path?: string;
-  default?: boolean;
-  // biome-ignore lint/suspicious/noExplicitAny: Permitimos cualquier prop extra del Router
-  [key: string]: any; 
-}
-
-// 3. Aplicamos la interfaz al componente
-function PrivateRoute({ component: Component, ...rest }: PrivateRouteProps) {
-  const { route } = useLocation();
-
-  useEffect(() => {
-    if (!authStore.isPending.value && !authStore.isAuthenticated.value) {
-      route('/', true); 
-    }
-  }, [authStore.isAuthenticated.value, authStore.isPending.value, route]);
-
-  if (authStore.isPending.value || !authStore.isAuthenticated.value) {
-    return (
-      <div class="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 animate-pulse">
-        Verificando credenciales...
-      </div>
-    );
-  }
-
-  // Preact ya sabe que Component es válido y rest es seguro
-  return <Component {...rest} />;
-}
+const NotFoundScreen = () => (
+  <div class="p-8 text-center text-red-500">
+    <h1 class="text-2xl font-bold">404 - No encontrado</h1>
+  </div>
+);
 
 // --- LA APLICACIÓN PRINCIPAL ---
 export function App() {
+  // Inicializamos la verificación de sesión al montar la app
   useEffect(() => {
     authStore.checkSession();
   }, []);
@@ -51,9 +29,14 @@ export function App() {
     <LocationProvider>
       <ErrorBoundary onError={(e) => console.error("Crash visual de Preact:", e)}>
         <Router>
-          <Route path="/" component={LoginScreen} />
-          <Route path="/signup" component={SignupScreen} />   
+          {/* Rutas Públicas: Protegidas para usuarios logueados */}
+          <GuestRoute path="/" component={LoginScreen} />
+          <GuestRoute path="/signup" component={SignupScreen} />   
+          
+          {/* Rutas Privadas: Protegidas para visitantes */}
           <PrivateRoute path="/dashboard" component={DashboardScreen} />
+          
+          {/* Fallback 404 */}
           <Route default component={NotFoundScreen} />
         </Router>
       </ErrorBoundary>
