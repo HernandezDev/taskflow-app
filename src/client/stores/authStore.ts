@@ -1,4 +1,3 @@
-// src/client/stores/authStore.ts
 import type { ReadonlySignal } from "@preact/signals-core";
 import { batch, computed, createModel, signal } from "@preact/signals-core";
 import { authClient } from "../lib/auth-client";
