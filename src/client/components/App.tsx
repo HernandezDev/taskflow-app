@@ -1,7 +1,7 @@
 import type { ComponentType } from 'preact'; 
 import { useEffect } from 'preact/hooks';
 import { ErrorBoundary, LocationProvider, Route, Router, useLocation } from 'preact-iso';
-import { authStore } from '../stores/authModel'; 
+import { authStore } from '../stores/authStore'; 
 import { LoginScreen } from './LoginScreen';
 
 // --- COMPONENTES PLACEHOLDER ---

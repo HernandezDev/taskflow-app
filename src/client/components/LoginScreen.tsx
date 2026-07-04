@@ -1,7 +1,7 @@
 // src/client/pages/LoginScreen.tsx
 import { useSignal } from "@preact/signals";
 import { useLocation } from "preact-iso";
-import { authStore } from "../stores/authModel";
+import { authStore } from "../stores/authStore";
 
 export function LoginScreen() {
   const email = useSignal("");
