@@ -15,13 +15,13 @@ Este documento centraliza de forma estricta las reglas arquitectónicas, restric
 
 ## 2. Capa de Frontend (Preact & Reactividad Granular)
 
-### 2.1 Restricción Principal de React Hooks (Capa de Datos)
-Está **ESTRICTAMENTE PROHIBIDO** importar o utilizar: `useState`, `useEffect`, `useReducer`, `useMemo` o `useCallback` para gestionar la lógica de negocio, peticiones de red, o ciclos de vida de datos dentro de los componentes y páginas. Toda la reactividad, derivación de estado y control de efectos secundarios debe ser gestionada exclusivamente mediante la API oficial de Signals y el ecosistema `createModel`.
-
-* **Excepción de Bootstrap Raíz:** Se permite el uso puntual de `useEffect` **única y exclusivamente** en el componente raíz de la aplicación (`src/client/App.tsx`) para la inicialización de infraestructura global de una sola ejecución (ej. recuperar la sesión inicial de Better Auth al montar la SPA).
+### 2.1 Ámbitos de Responsabilidad de Hooks (Dominio vs. Bootstrap)
+La validez del uso de hooks nativos de React/Preact (`useState`, `useEffect`, `useReducer`, `useMemo`, `useCallback`) se define estrictamente por su ámbito de ejecución en la arquitectura:
+* **Capa de Dominio y UI (Restringido):** Para la construcción de componentes, páginas, flujos de datos y lógica de negocio, su uso está **estrictamente prohibido**. Toda reactividad local, derivación de estado y manejo de efectos secundarios debe gestionarse de forma exclusiva mediante el ecosistema `@preact/signals` y `createModel`.
+* **Capa de Infraestructura Raíz (Permitido):** Los hooks nativos son válidos única y exclusivamente como mecanismos de puente (bootstraping) en la cúspide del árbol de renderizado. Su propósito se limita a la inicialización global de infraestructura de una sola ejecución (ej. montar *listeners* globales o acoplar la lectura asíncrona de una sesión de autenticación al arrancar la SPA) antes de delegar el control de la aplicación al motor de Signals.
 
 ### 2.2 Excepción Estricta de Enrutamiento (`preact-iso`)
-La prohibición de hooks nativos aplica a la capa de dominio. Se utilizará **`preact-iso`** como enrutador oficial debido a su naturaleza *Edge-first*. Su uso está confinado estrictamente a la Capa de Vista (decidir qué componente renderizar basándose en la URL mediante `<Router>` y `useLocation`), por lo que no contamina el estado del dominio.
+Se utilizará **`preact-iso`** como enrutador oficial debido a su naturaleza *Edge-first*. Sus hooks nativos (`useLocation`, etc.) están confinados estrictamente a la Capa de Vista (decidir qué componente renderizar basándose en la URL), por lo que cumplen con la separación de responsabilidades y no contaminan el estado del dominio.
 
 ---
 
