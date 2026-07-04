@@ -1,45 +1,60 @@
-// src/client/App.tsx
-import { useModel } from "@preact/signals";
-import { createHintModel } from "../models/hint.model";
+import type { ComponentType } from 'preact'; 
+import { useEffect } from 'preact/hooks';
+import { ErrorBoundary, LocationProvider, Route, Router, useLocation } from 'preact-iso';
+import { authStore } from '../stores/authModel'; 
 
+// --- COMPONENTES PLACEHOLDER ---
+const LoginScreen = () => <div class="p-8 text-center"><h1 class="text-2xl font-bold">Pantalla de Login</h1></div>;
+const DashboardScreen = () => <div class="p-8 text-center text-green-600"><h1 class="text-2xl font-bold">Dashboard (Zona Segura)</h1></div>;
+const NotFoundScreen = () => <div class="p-8 text-center text-red-500"><h1 class="text-2xl font-bold">404 - No encontrado</h1></div>;
+
+// 2. Definimos la interfaz estricta (¡Adiós 'any'!)
+interface PrivateRouteProps {
+  // biome-ignore lint/suspicious/noExplicitAny: El enrutador inyecta props dinámicas
+  component: ComponentType<any>;
+  path?: string;
+  default?: boolean;
+  // biome-ignore lint/suspicious/noExplicitAny: Permitimos cualquier prop extra del Router
+  [key: string]: any; 
+}
+
+// 3. Aplicamos la interfaz al componente
+function PrivateRoute({ component: Component, ...rest }: PrivateRouteProps) {
+  const { route } = useLocation();
+
+  useEffect(() => {
+    if (!authStore.isPending.value && !authStore.isAuthenticated.value) {
+      route('/', true); 
+    }
+  }, [authStore.isAuthenticated.value, authStore.isPending.value, route]);
+
+  if (authStore.isPending.value || !authStore.isAuthenticated.value) {
+    return (
+      <div class="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 animate-pulse">
+        Verificando credenciales...
+      </div>
+    );
+  }
+
+  // Preact ya sabe que Component es válido y rest es seguro
+  return <Component {...rest} />;
+}
+
+// --- LA APLICACIÓN PRINCIPAL ---
 export function App() {
-  // 1. ERGONOMÍA ABSOLUTA: 
-  // Acoplamos la fábrica del modelo al ciclo de vida del componente.
-  // Desestructuramos para no tener que tocar el JSX de abajo.
-  const { data, isLoading, error } = useModel(() => createHintModel());
+  useEffect(() => {
+    authStore.checkSession();
+  }, []);
 
   return (
-    <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-t-4 border-orange-500">
-        
-        <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-orange-500 to-red-500 mb-3">
-          Hono SPA Template
-        </h1>
-        
-        <p class="text-gray-700 font-medium mb-6">
-          Plantilla Fullstack: Hono en backend, Preact en el cliente y Vite de orquestador.
-        </p>
-
-        <hr class="border-gray-200 mb-6" />
-
-        <div class="text-sm text-gray-500 space-y-5">
-          <p>
-            El frontend incluye TailwindCSS v4 y PWA. La <strong>comunicación con la API está tipada de extremo a extremo mediante Hono RPC</strong>.
-          </p>
-          
-          <div class="bg-orange-50 text-orange-800 p-3 rounded-lg border border-orange-100 font-semibold shadow-inner flex items-center justify-center gap-2 min-h-12.5"> 
-            {/* 2. CONSUMO REACTIVO: Seguimos evaluando el '.value' de los ReadonlySignals */}
-            {isLoading.value ? (
-              <span class="animate-pulse">Consultando...</span>
-            ) : error.value ? (
-              <span class="text-red-500 text-xs">Error: {error.value.message}</span>
-            ) : (
-              <span>{data.value.message}</span>
-            )}
-          </div>
-        </div>
-        
-      </div>
-    </div>
+    <LocationProvider>
+      <ErrorBoundary onError={(e) => console.error("Crash visual de Preact:", e)}>
+        <Router>
+          <Route path="/" component={LoginScreen} />
+          <PrivateRoute path="/dashboard" component={DashboardScreen} />
+          <Route default component={NotFoundScreen} />
+        </Router>
+      </ErrorBoundary>
+    </LocationProvider>
   );
 }
