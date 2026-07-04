@@ -1,12 +1,12 @@
 import type { ComponentType } from 'preact'; 
 import { useEffect } from 'preact/hooks';
 import { ErrorBoundary, LocationProvider, Route, Router, useLocation } from 'preact-iso';
+import { DashboardScreen } from './pages/DashboardScreen';
 import { LoginScreen } from './pages/LoginScreen';
 import { SignupScreen } from './pages/SignupScreen';
 import { authStore } from './stores/authStore'; 
 
 // --- COMPONENTES PLACEHOLDER ---
-const DashboardScreen = () => <div class="p-8 text-center text-green-600"><h1 class="text-2xl font-bold">Dashboard (Zona Segura)</h1></div>;
 const NotFoundScreen = () => <div class="p-8 text-center text-red-500"><h1 class="text-2xl font-bold">404 - No encontrado</h1></div>;
 
 // 2. Definimos la interfaz estricta (¡Adiós 'any'!)
