@@ -16,9 +16,13 @@ app.use(
 
 // 2. Auth Route: Solo se inicializa si alguien llama a /api/auth
 app.on(["GET", "POST"], "/api/auth/*", (c) => {
-	// Pasamos c.req.url para que el Singleton sepa dónde está corriendo
-	const auth = getAuth(c.env, c.req.url);
-	return auth.handler(c.req.raw);
+	try {
+		// Le pasamos la URL y el header Origin
+		const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
+		return auth.handler(c.req.raw);
+	} catch (_e) {
+		return c.json({ error: "No autorizado" }, 403);
+	}
 });
 
 // 3. API - Sub-enrutador encadenable
