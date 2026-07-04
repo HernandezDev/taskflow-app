@@ -16,7 +16,9 @@ Este documento centraliza de forma estricta las reglas arquitectónicas, restric
 ## 2. Capa de Frontend (Preact & Reactividad Granular)
 
 ### 2.1 Restricción Principal de React Hooks (Capa de Datos)
-Está **ESTRICTAMENTE PROHIBIDO** importar o utilizar: `useState`, `useEffect`, `useReducer`, `useMemo` o `useCallback` para gestionar la lógica de negocio, peticiones de red, o ciclos de vida de datos. Toda la reactividad, derivación de estado y control de efectos secundarios debe ser gestionada exclusivamente mediante la API oficial de Signals y el ecosistema `createModel`.
+Está **ESTRICTAMENTE PROHIBIDO** importar o utilizar: `useState`, `useEffect`, `useReducer`, `useMemo` o `useCallback` para gestionar la lógica de negocio, peticiones de red, o ciclos de vida de datos dentro de los componentes y páginas. Toda la reactividad, derivación de estado y control de efectos secundarios debe ser gestionada exclusivamente mediante la API oficial de Signals y el ecosistema `createModel`.
+
+* **Excepción de Bootstrap Raíz:** Se permite el uso puntual de `useEffect` **única y exclusivamente** en el componente raíz de la aplicación (`src/client/App.tsx`) para la inicialización de infraestructura global de una sola ejecución (ej. recuperar la sesión inicial de Better Auth al montar la SPA).
 
 ### 2.2 Excepción Estricta de Enrutamiento (`preact-iso`)
 La prohibición de hooks nativos aplica a la capa de dominio. Se utilizará **`preact-iso`** como enrutador oficial debido a su naturaleza *Edge-first*. Su uso está confinado estrictamente a la Capa de Vista (decidir qué componente renderizar basándose en la URL mediante `<Router>` y `useLocation`), por lo que no contamina el estado del dominio.
@@ -105,7 +107,7 @@ Queda **ESTRICTAMENTE PROHIBIDA** la instalación de librerías de gestión de e
 
 ### 6.2 Organización de Archivos
 * `src/client/lib/` -> Configuración de Hono RPC, Better Auth, y utilidades base.
-* `src/client/store/` -> Singletons exportados globales (ej. `authStore.ts`).
+* `src/client/stores/` -> Singletons exportados globales (ej. `authStore.ts`).
 * `src/client/models/` -> Clases generadas con `createModel` e Interfaces de TypeScript (`ReadonlySignal`) para su consumo vía `useModel`.
 * `src/client/pages/` -> Vistas mapeadas a rutas de `preact-iso`.
 * `src/client/components/` -> Componentes visuales puros que consumen las propiedades de los modelos.
