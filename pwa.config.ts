@@ -1,10 +1,19 @@
 import type { VitePWAOptions } from "vite-plugin-pwa";
 
 export const pwaOptions: Partial<VitePWAOptions> = {
+	// 1. OPTIMIZACIÓN DE RENDIMIENTO (Lighthouse)
+	// Carga el script en segundo plano sin pausar el renderizado principal
+	injectRegister: "script-defer",
+
 	registerType: "autoUpdate",
+
 	workbox: {
+		// Evita que el Service Worker intercepte tus peticiones al backend
 		navigateFallbackDenylist: [/^\/api/],
+		// 2. BUENA PRÁCTICA: Limpia cachés de versiones anteriores automáticamente
+		cleanupOutdatedCaches: true,
 	},
+
 	manifest: {
 		name: "Hono SPA Template",
 		short_name: "Hono SPA",
