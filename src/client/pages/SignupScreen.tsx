@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { useLocation } from "preact-iso";
+import { useTransitionRoute } from "../hooks/useTransitionRoute";
 import { authStore } from "../stores/authStore"; 
 
 export function SignupScreen() {
@@ -9,7 +9,7 @@ export function SignupScreen() {
   const password = useSignal("");
   const errorMessage = useSignal<string | null>(null);
   
-  const { route } = useLocation();
+  const route = useTransitionRoute();
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -105,7 +105,7 @@ export function SignupScreen() {
           ¿Ya tienes una cuenta?{" "}
           <button
             type="button"
-            onClick={() => route("/")}
+            onClick={() => route("/", { direction: "backward" })}
             class="text-blue-600 hover:underline font-medium focus:outline-none"
           >
             Inicia sesión
