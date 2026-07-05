@@ -5,6 +5,29 @@
   --color-hono: #E36002;
 }
 
+/* 1. FOTOGRAMAS CLAVE */
+@keyframes slide-to-left { to { transform: translateX(-100%); } }
+@keyframes slide-from-right { from { transform: translateX(100%); } }
+@keyframes slide-to-right { to { transform: translateX(100%); } }
+@keyframes slide-from-left { from { transform: translateX(-100%); } }
+
+/* 2. TRANSICIÓN POR DEFECTO (Adelante) */
+/* Usamos :root directo para no romper la especificidad de la API */
+:root::view-transition-old(root) {
+  animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-to-left;
+}
+:root::view-transition-new(root) {
+  animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-from-right;
+}
+
+/* 3. TRANSICIÓN HACIA ATRÁS (Sobrescribe a la anterior) */
+/* CRÍTICO: No debe haber ningún espacio antes de los :: */
+:root.back-transition::view-transition-old(root) {
+  animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-to-right !important;
+}
+:root.back-transition::view-transition-new(root) {
+  animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-from-left !important;
+}
 body {
   background-color: #f3f4f6; /* Un gris muy clarito */
 }

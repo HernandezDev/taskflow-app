@@ -1,6 +1,6 @@
 // src/client/pages/LoginScreen.tsx
 import { useSignal } from "@preact/signals";
-import { useLocation } from "preact-iso";
+import { useTransitionRoute } from "../hooks/useTransitionRoute";
 import { authStore } from "../stores/authStore";
 
 export function LoginScreen() {
@@ -9,7 +9,7 @@ export function LoginScreen() {
   // 1. Creamos una señal local para manejar el mensaje de error
   const errorMessage = useSignal<string | null>(null);
   
-  const { route } = useLocation();
+  const  route  = useTransitionRoute();
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();

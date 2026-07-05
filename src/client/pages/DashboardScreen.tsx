@@ -1,9 +1,9 @@
-import { useLocation } from "preact-iso";
+import { useTransitionRoute } from "../hooks/useTransitionRoute";
 import { authStore } from "../stores/authStore";
 
 export function DashboardScreen() {
-  const { route } = useLocation();
-  
+  const route = useTransitionRoute();
+
   // Extraemos el usuario actual del store global
   const user = authStore.user.value;
 
@@ -13,7 +13,7 @@ export function DashboardScreen() {
     
     // 2. Redirigimos al Login reemplazando el historial (true)
     // para que el usuario no pueda usar el botón "Atrás" del navegador
-    route("/", true);
+    route("/", { replace: true, direction: "backward" });
   };
 
   return (
