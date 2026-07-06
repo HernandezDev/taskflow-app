@@ -18,6 +18,19 @@ export const createAuth = (config: { database: D1Database; secret: string; baseU
 		advanced: {
 			ipAddress: { ipAddressHeaders: ["CF-Connecting-IP"] },
 		},
+		// 🛡️ Forzamos la emulación de Node de Cloudflare (BoringSSL en C++)
+		crypto: {
+			useWebCrypto: false,
+		},
+		// ⚡ Reducimos la exigencia matemática para asegurar que ejecute en < 10ms
+		password: {
+			hashOptions: {
+				N: 512,
+				r: 8,
+				p: 1,
+				outputLength: 32,
+			},
+		},
 		emailAndPassword: {
 			enabled: true,
 		},
