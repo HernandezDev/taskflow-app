@@ -1,36 +1,61 @@
 import { z } from "zod";
 
-// 1. Añadimos Nombre y Email al esquema maestro
-const registroSchema = z.object({
-  nombre: z.string().min(4, "nombre_valido"), // Mínimo 4 letras
-  email: z.string().email("email_valido"),    // Formato email válido
-  password: z.string()
-    .min(8, "length") 
-    .regex(/[A-Z]/, "upper")
-    .regex(/[0-9]/, "number"),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "match",
-  path: ["confirmPassword"], 
-});
+const registroSchema = z
+	.object({
+		nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+		email: z.email("El formato del correo es inválido"),
+		password: z.string().min(8, "length").regex(/[A-Z]/, "upper").regex(/[0-9]/, "number"),
+		confirmPassword: z.string(),
+	})
+	.refine((data) => data.password === data.confirmPassword, {
+		message: "match",
+		path: ["confirmPassword"],
+	});
 
-export function evaluarReglasRegistro(nombre: string, email: string, password: string, confirmPassword: string) {
-  const resultado = registroSchema.safeParse({ nombre, email, password, confirmPassword });
+export type DatosRegistro = z.infer<typeof registroSchema>;
 
-  if (resultado.success) {
-    return { nombreOk: true, emailOk: true, length: true, upper: true, number: true, match: true };
-  }
+export function validarFormulario(datos: Record<string, string>) {
+	const resultado = registroSchema.safeParse(datos);
 
-  const erroresSet = new Set(resultado.error.issues.map(issue => issue.message));
+	if (resultado.success) {
+		return {
+			exito: true,
+			erroresCampos: {},
+			reglasPassword: { length: true, upper: true, number: true, match: true },
+		};
+	}
 
-  return {
-    // Usamos .has() en lugar de .includes(). Es infinitamente más rápido a nivel de CPU.
-    nombreOk: nombre.trim() !== "" && !erroresSet.has("nombre_valido"),
-    emailOk: email.trim() !== "" && !erroresSet.has("email_valido"),
-    
-    length: !erroresSet.has("length"),
-    upper: !erroresSet.has("upper"),
-    number: !erroresSet.has("number"),
-    match: password !== "" && !erroresSet.has("match"),
-  };
+	// 🚀 ZOD v4: Usamos z.treeifyError para procesar el error
+	const errorTree = z.treeifyError(resultado.error);
+
+	// Extraemos los arrays de errores navegando de forma segura por el árbol (por si son undefined)
+	const passErrors = errorTree.properties?.password?.errors || [];
+	const confirmErrors = errorTree.properties?.confirmPassword?.errors || [];
+
+	// Los unimos en nuestro Set de alta eficiencia O(1)
+	const passwordErrorsSet = new Set([...passErrors, ...confirmErrors]);
+
+	const reglasPassword = {
+		length: !passwordErrorsSet.has("length"),
+		upper: !passwordErrorsSet.has("upper"),
+		number: !passwordErrorsSet.has("number"),
+		match: datos.password !== "" && !passwordErrorsSet.has("match"),
+	};
+
+	// Construimos manualmente el diccionario de campos de texto (Nombre y Email)
+	// Así evitamos mandar "length" o "match" a la interfaz de usuario
+	const erroresCampos: Record<string, string[]> = {};
+
+	if (errorTree.properties?.nombre?.errors?.length) {
+		erroresCampos.nombre = errorTree.properties.nombre.errors;
+	}
+	if (errorTree.properties?.email?.errors?.length) {
+		erroresCampos.email = errorTree.properties.email.errors;
+	}
+
+	return {
+		exito: false,
+		erroresCampos,
+		reglasPassword,
+	};
 }
