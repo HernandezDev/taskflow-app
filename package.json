@@ -13,6 +13,7 @@
 		"db:migrate:remote": "wrangler d1 migrations apply DB --remote"
 	},
 	"dependencies": {
+		"@phosphor-icons/react": "^2.1.10",
 		"@preact/signals": "^2.9.2",
 		"@preact/signals-core": "^1.14.3",
 		"better-auth": "^1.6.20",
