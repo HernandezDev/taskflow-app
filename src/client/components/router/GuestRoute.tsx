@@ -1,3 +1,4 @@
+import { CircleNotchIcon } from "@phosphor-icons/react";
 import type { ComponentType } from "preact";
 import { useEffect } from "preact/hooks";
 import { useLocation } from "preact-iso";
@@ -25,7 +26,7 @@ export function GuestRoute({ component: Component, ...rest }: RouteWrapperProps)
     if (authStore.isPending.value || authStore.isAuthenticated.value) {
         return (
             <div class="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 animate-pulse">
-                Accediendo a tu cuenta...
+                <CircleNotchIcon size={32} class="animate-spin" />
             </div>
         );
     }
