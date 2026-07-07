@@ -1,32 +1,92 @@
-import { CaretLeftIcon } from "@phosphor-icons/react";
+import { CaretLeftIcon, CheckCircle, Circle } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
+import { usePrefetch } from "../hooks/usePrefetch"; // <-- Añadido tu hook
 import { useTransitionRoute } from "../hooks/useTransitionRoute";
-import { authStore } from "../stores/authStore"; 
+import { authStore } from "../stores/authStore";
 
 export function SignupScreen() {
-  // Señales locales para el formulario
+  // 1. Señales locales para los valores del formulario
   const name = useSignal("");
   const email = useSignal("");
   const password = useSignal("");
-  const errorMessage = useSignal<string | null>(null);
+  const confirmPassword = useSignal(""); // <-- Añadido
   
-  const route = useTransitionRoute();
+  // 2. Señales para nuestra validación avanzada
+  const errorMessage = useSignal<string | null>(null); // Error global (de la API)
+  const erroresTexto = useSignal<Record<string, string[]>>({}); // Errores de nombre/email
+  const reglasPass = useSignal({ length: false, upper: false, number: false, match: false }); // Checklist
 
+  const route = useTransitionRoute();
+  
+  // 🚀 Precargamos Zod en segundo plano
+  const obtenerValidador = usePrefetch(() => import('../lib/validarRegistro'));
+
+  // --- HANDLERS DE VALIDACIÓN ---
+
+  // Se ejecuta con cada tecla en las contraseñas
+  const manejarInputPassword = async (campo: 'password' | 'confirmPassword', valor: string) => {
+    if (campo === 'password') password.value = valor;
+    if (campo === 'confirmPassword') confirmPassword.value = valor;
+
+    const modulo = await obtenerValidador();
+    const resultado = modulo.validarFormulario({
+      nombre: name.value,
+      email: email.value,
+      password: password.value,
+      confirmPassword: confirmPassword.value
+    });
+    
+    // Solo actualizamos el checklist en tiempo real
+    reglasPass.value = resultado.reglasPassword;
+  };
+
+  // Se ejecuta cuando el usuario sale del input (onBlur) de nombre y email
+  const manejarBlurGenerales = async () => {
+    const modulo = await obtenerValidador();
+    const resultado = modulo.validarFormulario({
+      nombre: name.value,
+      email: email.value,
+      password: password.value,
+      confirmPassword: confirmPassword.value
+    });
+    
+    // Aquí extraemos los textos de error
+    erroresTexto.value = resultado.erroresCampos;
+  };
+
+  // --- SUBMIT FINAL ---
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     errorMessage.value = null; 
+
+    // Validación estricta final antes de enviar al store
+    const modulo = await obtenerValidador();
+    const resultado = modulo.validarFormulario({
+      nombre: name.value,
+      email: email.value,
+      password: password.value,
+      confirmPassword: confirmPassword.value
+    });
+
+    if (!resultado.exito) {
+      // Si el usuario intentó enviar sin pasar por los inputs, mostramos los errores
+      erroresTexto.value = resultado.erroresCampos;
+      reglasPass.value = resultado.reglasPassword;
+      return; 
+    }
     
-    // Llamamos al método de registro de tu Store
+    // Llamamos al método de registro de tu Store (solo llega aquí si Zod dio el ok)
     const { error } = await authStore.signUp(email.value, password.value, name.value);
 
     if (error) {
       errorMessage.value = (error as { message?: string }).message || "Error al crear la cuenta. Intenta nuevamente.";
     } else {
-      // Si el registro es exitoso, Better Auth inicia sesión automáticamente,
-      // así que lo mandamos directo al área protegida.
       route("/dashboard");
     }
   };
+
+  // Verificamos si todas las reglas de la contraseña están en true
+  const passwordCompleta = Object.values(reglasPass.value).every(Boolean);
 
   return (
     <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
@@ -38,7 +98,7 @@ export function SignupScreen() {
           Crear Cuenta
         </h1>
 
-        {/* Mensaje de error local */}
+        {/* Mensaje de error global (de la API) */}
         {errorMessage.value && (
           <div class="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm text-center">
             {errorMessage.value}
@@ -46,6 +106,8 @@ export function SignupScreen() {
         )}
 
         <div class="space-y-4">
+          
+          {/* INPUT: NOMBRE */}
           <div>
             <label for="nameInput" class="block text-sm font-medium text-gray-700 mb-1">
               Nombre
@@ -55,12 +117,17 @@ export function SignupScreen() {
               type="text"
               value={name.value}
               onInput={(e) => (name.value = (e.target as HTMLInputElement).value)}
+              onBlur={manejarBlurGenerales} // Validación tardía
               required
-              class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              class={`w-full border rounded-lg p-2.5 outline-none transition-colors focus:ring-1 focus:ring-blue-500 ${erroresTexto.value.nombre ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
               placeholder="Tu nombre"
             />
+            {erroresTexto.value.nombre && (
+              <p class="text-xs text-red-500 mt-1">{erroresTexto.value.nombre[0]}</p>
+            )}
           </div>
 
+          {/* INPUT: EMAIL */}
           <div>
             <label for="signupEmailInput" class="block text-sm font-medium text-gray-700 mb-1">
               Email
@@ -70,31 +137,73 @@ export function SignupScreen() {
               type="email"
               value={email.value}
               onInput={(e) => (email.value = (e.target as HTMLInputElement).value)}
+              onBlur={manejarBlurGenerales} // Validación tardía
               required
-              class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              class={`w-full border rounded-lg p-2.5 outline-none transition-colors focus:ring-1 focus:ring-blue-500 ${erroresTexto.value.email ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'}`}
               placeholder="tu@email.com"
             />
+            {erroresTexto.value.email && (
+              <p class="text-xs text-red-500 mt-1">{erroresTexto.value.email[0]}</p>
+            )}
           </div>
 
-          <div>
-            <label for="signupPasswordInput" class="block text-sm font-medium text-gray-700 mb-1">
-              Contraseña
-            </label>
-            <input
-              id="signupPasswordInput"
-              type="password"
-              value={password.value}
-              onInput={(e) => (password.value = (e.target as HTMLInputElement).value)}
-              required
-              minLength={6} // Validación básica de HTML5
-              class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="••••••••"
-            />
+          {/* INPUTS: CONTRASEÑAS */}
+          <div class="flex gap-3">
+            <div class="w-1/2">
+              <label for="signupPasswordInput" class="block text-sm font-medium text-gray-700 mb-1">
+                Contraseña
+              </label>
+              <input
+                id="signupPasswordInput"
+                type="password"
+                value={password.value}
+                onInput={(e) => manejarInputPassword('password', (e.target as HTMLInputElement).value)}
+                required
+                class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="••••••••"
+              />
+            </div>
+            <div class="w-1/2">
+              <label for="signupConfirmInput" class="block text-sm font-medium text-gray-700 mb-1">
+                Repetir
+              </label>
+              <input
+                id="signupConfirmInput"
+                type="password"
+                value={confirmPassword.value}
+                onInput={(e) => manejarInputPassword('confirmPassword', (e.target as HTMLInputElement).value)}
+                required
+                class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          {/* CHECKLIST DE CONTRASEÑA */}
+          <div class="p-3 bg-gray-50 rounded-lg border border-gray-100 flex flex-col gap-1.5">
+            <p class="text-xs font-semibold text-gray-500 mb-1">Tu contraseña debe tener:</p>
+            <div class={`flex items-center gap-2 text-sm transition-colors ${reglasPass.value.length ? 'text-green-600' : 'text-gray-400'}`}>
+              {reglasPass.value.length ? <CheckCircle weight="fill" size={16} /> : <Circle size={16} />}
+              <span>Al menos 8 caracteres</span>
+            </div>
+            <div class={`flex items-center gap-2 text-sm transition-colors ${reglasPass.value.upper ? 'text-green-600' : 'text-gray-400'}`}>
+              {reglasPass.value.upper ? <CheckCircle weight="fill" size={16} /> : <Circle size={16} />}
+              <span>Una letra mayúscula</span>
+            </div>
+            <div class={`flex items-center gap-2 text-sm transition-colors ${reglasPass.value.number ? 'text-green-600' : 'text-gray-400'}`}>
+              {reglasPass.value.number ? <CheckCircle weight="fill" size={16} /> : <Circle size={16} />}
+              <span>Un número</span>
+            </div>
+            <div class={`flex items-center gap-2 text-sm transition-colors ${reglasPass.value.match ? 'text-green-600' : 'text-gray-400'}`}>
+              {reglasPass.value.match ? <CheckCircle weight="fill" size={16} /> : <Circle size={16} />}
+              <span>Las contraseñas coinciden</span>
+            </div>
           </div>
 
           <button
             type="submit"
-            disabled={authStore.isPending.value}
+            // Deshabilitamos si la API está cargando O si la contraseña no cumple las reglas
+            disabled={authStore.isPending.value || !passwordCompleta}
             class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {authStore.isPending.value ? "Creando cuenta..." : "Registrarse"}
