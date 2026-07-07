@@ -1,5 +1,6 @@
 // src/client/pages/LoginScreen.tsx
 import { useSignal } from "@preact/signals";
+import { useLocation } from "preact-iso";
 import { useTransitionRoute } from "../hooks/useTransitionRoute";
 import { authStore } from "../stores/authStore";
 
@@ -9,7 +10,8 @@ export function LoginScreen() {
   // 1. Creamos una señal local para manejar el mensaje de error
   const errorMessage = useSignal<string | null>(null);
   
-  const  route  = useTransitionRoute();
+  const  TransitionRoute  = useTransitionRoute();
+  const { route } = useLocation();
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -23,7 +25,7 @@ export function LoginScreen() {
       // Usamos un casteo rápido para extraerlo de forma segura
       errorMessage.value = (error as { message?: string }).message || "Error al iniciar sesión. Verifica tus credenciales.";
     } else {
-      route("/dashboard");
+      TransitionRoute("/dashboard");
     }
   };
 

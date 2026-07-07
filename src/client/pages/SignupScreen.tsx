@@ -1,4 +1,5 @@
 import { useSignal } from "@preact/signals";
+import { useLocation } from "preact-iso";
 import { useTransitionRoute } from "../hooks/useTransitionRoute";
 import { authStore } from "../stores/authStore"; 
 
@@ -9,7 +10,8 @@ export function SignupScreen() {
   const password = useSignal("");
   const errorMessage = useSignal<string | null>(null);
   
-  const route = useTransitionRoute();
+  const TransitionRoute = useTransitionRoute();
+  const { route } = useLocation();
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -23,7 +25,7 @@ export function SignupScreen() {
     } else {
       // Si el registro es exitoso, Better Auth inicia sesión automáticamente,
       // así que lo mandamos directo al área protegida.
-      route("/dashboard");
+      TransitionRoute("/dashboard");
     }
   };
 
@@ -105,7 +107,7 @@ export function SignupScreen() {
           ¿Ya tienes una cuenta?{" "}
           <button
             type="button"
-            onClick={() => route("/", { direction: "backward" })}
+            onClick={() => route("/")}
             class="text-blue-600 hover:underline font-medium focus:outline-none"
           >
             Inicia sesión
