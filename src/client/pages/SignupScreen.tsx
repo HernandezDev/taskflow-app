@@ -102,14 +102,14 @@ export function SignupScreen() {
 
         {/* Enlace para volver al Login */}
         <div class="mt-6 text-center text-sm text-gray-600">
-          ¿Ya tienes una cuenta?{" "}
           <button
             type="button"
             onClick={() => route("/", { direction: "backward" })}
-            class="text-blue-600 hover:underline font-medium focus:outline-none"
+            class="mt-2 inline-flex items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            Inicia sesión
+            ⬅️ Inicia sesión
           </button>
+          ¿Ya tienes una cuenta?{" "}
         </div>
       </form>
     </div>
