@@ -18,7 +18,7 @@ export function DashboardScreen() {
 
   return (
     <div class="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-      <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center border-t-4 border-blue-500">
+      <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
         
         <div class="mb-6">
           <span class="inline-block bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wide">
