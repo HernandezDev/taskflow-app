@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // 1. Añadimos Nombre y Email al esquema maestro
 const registroSchema = z.object({
-  nombre: z.string().min(2, "nombre_valido"), // Mínimo 2 letras
+  nombre: z.string().min(4, "nombre_valido"), // Mínimo 2 letras
   email: z.string().email("email_valido"),    // Formato email válido
   password: z.string()
     .min(8, "length") 
