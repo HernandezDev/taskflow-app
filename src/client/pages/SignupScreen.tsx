@@ -1,5 +1,6 @@
 import { CaretLeftIcon, CheckCircleIcon, CircleIcon } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
+import { useFormErrors } from "../hooks/useFormErrors"; // 🚀 Importamos el nuevo hook
 import { usePrefetch } from "../hooks/usePrefetch"; 
 import { useTransitionRoute } from "../hooks/useTransitionRoute";
 import { authStore } from "../stores/authStore";
@@ -11,28 +12,20 @@ export function SignupScreen() {
   const confirmPassword = useSignal(""); 
   
   const errorMessage = useSignal<string | null>(null); 
-  const erroresTexto = useSignal<Record<string, string[]>>({}); 
   const reglasPass = useSignal({ length: false, upper: false, number: false }); 
+
+  // 🚀 1. Instanciamos nuestro controlador de errores blindado
+  const controladorErrores = useFormErrors();
 
   const route = useTransitionRoute();
   const obtenerValidador = usePrefetch(() => import('../lib/validarRegistro'));
-
-  // 🚀 Función auxiliar para limpiar el error de texto de un campo específico
-  const limpiarErrorCampo = (campo: string) => {
-    if (erroresTexto.value[campo]) {
-      // Creamos una copia del objeto de errores sin el campo actual
-      const nuevosErrores = { ...erroresTexto.value };
-      delete nuevosErrores[campo];
-      erroresTexto.value = nuevosErrores;
-    }
-  };
 
   const manejarInputPassword = async (campo: 'password' | 'confirmPassword', valor: string) => {
     if (campo === 'password') password.value = valor;
     if (campo === 'confirmPassword') confirmPassword.value = valor;
 
-    // 🚀 Al empezar a escribir en password o confirmPassword, limpiamos el error de coincidencia/largo
-    limpiarErrorCampo(campo);
+    // 🚀 2. Usamos el método oficial del controlador
+    controladorErrores.limpiarCampo(campo);
 
     const modulo = await obtenerValidador();
     const resultado = modulo.validarFormulario({
@@ -48,7 +41,9 @@ export function SignupScreen() {
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     errorMessage.value = null; 
-    erroresTexto.value = {}; 
+    
+    // 🚀 3. Limpiamos todos los errores usando el controlador
+    controladorErrores.limpiarTodos(); 
 
     const modulo = await obtenerValidador();
     const resultado = modulo.validarFormulario({
@@ -59,7 +54,8 @@ export function SignupScreen() {
     });
 
     if (!resultado.exito) {
-      erroresTexto.value = resultado.erroresCampos;
+      // 🚀 4. Seteamos los errores de la validación
+      controladorErrores.setErrores(resultado.erroresCampos);
       reglasPass.value = resultado.reglasPassword;
       return; 
     }
@@ -100,14 +96,15 @@ export function SignupScreen() {
               value={name.value}
               onInput={(e) => {
                 name.value = (e.target as HTMLInputElement).value;
-                // 🚀 Quita el error rojo en cuanto el usuario presiona una tecla
-                limpiarErrorCampo('nombre');
+                // 🚀 5. Leemos y limpiamos a través del controlador
+                controladorErrores.limpiarCampo('nombre');
               }}
-              class={`w-full border rounded-lg p-2.5 outline-none transition-colors focus:ring-1 ${erroresTexto.value.nombre ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
+              // 🚀 6. Accedemos de forma segura (Read-only) al valor del signal
+              class={`w-full border rounded-lg p-2.5 outline-none transition-colors focus:ring-1 ${controladorErrores.textos.value.nombre ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
               placeholder="Tu nombre"
             />
-            {erroresTexto.value.nombre && (
-              <p class="text-xs text-red-500 mt-1 font-medium">{erroresTexto.value.nombre[0]}</p>
+            {controladorErrores.textos.value.nombre && (
+              <p class="text-xs text-red-500 mt-1 font-medium">{controladorErrores.textos.value.nombre[0]}</p>
             )}
           </div>
 
@@ -120,14 +117,14 @@ export function SignupScreen() {
               value={email.value}
               onInput={(e) => {
                 email.value = (e.target as HTMLInputElement).value;
-                // 🚀 Quita el error rojo en cuanto el usuario presiona una tecla
-                limpiarErrorCampo('email');
+                // 🚀 Usamos el controlador
+                controladorErrores.limpiarCampo('email');
               }}
-              class={`w-full border rounded-lg p-2.5 outline-none transition-colors focus:ring-1 ${erroresTexto.value.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
+              class={`w-full border rounded-lg p-2.5 outline-none transition-colors focus:ring-1 ${controladorErrores.textos.value.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
               placeholder="tu@email.com"
             />
-            {erroresTexto.value.email && (
-              <p class="text-xs text-red-500 mt-1 font-medium">{erroresTexto.value.email[0]}</p>
+            {controladorErrores.textos.value.email && (
+              <p class="text-xs text-red-500 mt-1 font-medium">{controladorErrores.textos.value.email[0]}</p>
             )}
           </div>
 
@@ -152,14 +149,14 @@ export function SignupScreen() {
                 type="password"
                 value={confirmPassword.value}
                 onInput={(e) => manejarInputPassword('confirmPassword', (e.target as HTMLInputElement).value)}
-                class={`w-full border rounded-lg p-2.5 outline-none transition-colors focus:ring-1 ${erroresTexto.value.confirmPassword ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
+                class={`w-full border rounded-lg p-2.5 outline-none transition-colors focus:ring-1 ${controladorErrores.textos.value.confirmPassword ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'}`}
                 placeholder="••••••••"
               />
             </div>
           </div>
           
-          {erroresTexto.value.confirmPassword && (
-            <p class="text-xs text-red-500 mt-0 font-medium">{erroresTexto.value.confirmPassword[0]}</p>
+          {controladorErrores.textos.value.confirmPassword && (
+            <p class="text-xs text-red-500 mt-0 font-medium">{controladorErrores.textos.value.confirmPassword[0]}</p>
           )}
 
           {/* CHECKLIST DE CONTRASEÑA */}
