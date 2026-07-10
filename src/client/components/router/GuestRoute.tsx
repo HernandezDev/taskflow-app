@@ -18,12 +18,15 @@ export function GuestRoute({ component: Component, ...rest }: RouteWrapperProps)
     const { route } = useLocation();
 
     useEffect(() => {
-        if (!authStore.isPending.value && authStore.isAuthenticated.value) {
+        // 🚀 CAMBIO CLAVE: Escuchamos isInitializing en vez de isPending
+        if (!authStore.isInitializing.value && authStore.isAuthenticated.value) {
             route("/dashboard", true); // Redirige al panel y reemplaza el historial
         }
-    }, [authStore.isAuthenticated.value, authStore.isPending.value, route]);
+    }, [authStore.isAuthenticated.value, authStore.isInitializing.value, route]);
 
-    if (authStore.isPending.value || authStore.isAuthenticated.value) {
+    // 🚀 CAMBIO CLAVE: Solo bloqueamos la UI si estamos verificando la sesión inicial
+    // Mantenemos el bloqueo si ya está autenticado para evitar "parpadeos" antes de la redirección
+    if (authStore.isInitializing.value || authStore.isAuthenticated.value) {
         return (
             <div class="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 animate-pulse">
                 <CircleNotchIcon size={32} class="animate-spin" />

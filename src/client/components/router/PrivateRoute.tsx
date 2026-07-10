@@ -17,12 +17,16 @@ export function PrivateRoute({ component: Component, ...rest }: RouteWrapperProp
     const { route } = useLocation();
 
     useEffect(() => {
-        if (!authStore.isPending.value && !authStore.isAuthenticated.value) {
+        // 🚀 CAMBIO CLAVE: Escuchamos isInitializing en vez de isPending
+        if (!authStore.isInitializing.value && !authStore.isAuthenticated.value) {
             route("/", true); // Redirige al login y reemplaza el historial
         }
-    }, [authStore.isAuthenticated.value, authStore.isPending.value, route]);
+    }, [authStore.isAuthenticated.value, authStore.isInitializing.value, route]);
 
-    if (authStore.isPending.value || !authStore.isAuthenticated.value) {
+    // 🚀 CAMBIO CLAVE: Bloqueamos la UI solo durante la verificación inicial de la sesión
+    // Mantenemos el spinner si no está autenticado para evitar que vea el Dashboard 
+    // durante el milisegundo en que el useEffect lo expulsa hacia el Login.
+    if (authStore.isInitializing.value || !authStore.isAuthenticated.value) {
         return (
             <div class="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 animate-pulse">
                 <CircleNotchIcon size={32} class="animate-spin" />

@@ -1,36 +1,44 @@
 import { CaretLeftIcon, CheckCircleIcon, CircleIcon } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
-import { useSignupForm } from "../hooks/useSignupForm"; // 🚀 Tu super hook
+import { useSignupForm } from "../hooks/useSignupForm";
 import { useTransitionRoute } from "../hooks/useTransitionRoute";
+import { traducirErrorAuth } from "../lib/traductorAuth";
 import { authStore } from "../stores/authStore";
 
 export function SignupScreen() {
-  const errorMessage = useSignal<string | null>(null); 
   const route = useTransitionRoute();
   
+  // Estado local para errores (muere al cambiar de ruta)
+  const errorLocal = useSignal<string | null>(null);
+
   // 🚀 Todo el poder encapsulado en una sola línea
   const formulario = useSignupForm();
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    errorMessage.value = null; 
+    if (authStore.isPending.value) return;
 
-    // 🚀 Delegamos la validación al hook
+    errorLocal.value = null;
+
     const esValido = await formulario.validarSubmit();
     
     if (!esValido) return; // Si falla, el hook ya encendió las alertas rojas
     
     // Si pasa, enviamos al backend de Better Auth
-    const { error } = await authStore.signUp(
-      formulario.form.value.email, 
-      formulario.form.value.password, 
-      formulario.form.value.nombre
-    );
+    try {
+      const { error } = await authStore.signUp(
+        formulario.form.value.email,
+        formulario.form.value.password,
+        formulario.form.value.nombre
+      );
 
-    if (error) {
-      errorMessage.value = (error as { message?: string }).message || "Error al crear la cuenta.";
-    } else {
-      route("/dashboard");
+      if (error) {
+        errorLocal.value = traducirErrorAuth(error);
+      } else {
+        route("/dashboard");
+      }
+    } catch (err) {
+      errorLocal.value = traducirErrorAuth(err);
     }
   };
 
@@ -39,9 +47,9 @@ export function SignupScreen() {
       <form onSubmit={handleSubmit} class="bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
         <h1 class="text-2xl font-bold text-center mb-6 text-gray-800">Crear Cuenta</h1>
 
-        {errorMessage.value && (
+        {errorLocal.value && (
           <div class="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm text-center">
-            {errorMessage.value}
+            {errorLocal.value}
           </div>
         )}
 

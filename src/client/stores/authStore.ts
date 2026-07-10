@@ -9,7 +9,10 @@ export interface AuthStore {
 	user: ReadonlySignal<User | null>;
 	session: ReadonlySignal<Session | null>;
 	isAuthenticated: ReadonlySignal<boolean>;
-	isPending: ReadonlySignal<boolean>;
+
+	// 🚀 SEPARACIÓN DE ESTADOS DE CARGA
+	isInitializing: ReadonlySignal<boolean>; // Para la carga global (App/Router)
+	isPending: ReadonlySignal<boolean>; // Para los botones de los formularios
 
 	checkSession(): Promise<void>;
 	login(email: string, password: string): Promise<{ data: unknown; error: unknown }>;
@@ -17,34 +20,43 @@ export interface AuthStore {
 	logout(): Promise<void>;
 }
 
-// Creamos la fábrica del Store Global (Renombrado para semántica correcta)
+// Creamos la fábrica del Store Global
 const createAuthStore = createModel<AuthStore>(() => {
 	const sessionSignal = signal<Session | null>(null);
 	const userSignal = signal<User | null>(null);
-	const isLoadingSignal = signal<boolean>(false);
+
+	// 🚀 Empieza en TRUE para que la app espere la verificación inicial
+	const isInitSignal = signal<boolean>(true);
+	// 🚀 Empieza en FALSE para los formularios
+	const isPendingSignal = signal<boolean>(false);
 
 	return {
 		user: userSignal,
 		session: sessionSignal,
 		isAuthenticated: computed(() => !!sessionSignal.value),
-		isPending: isLoadingSignal,
+		isInitializing: isInitSignal,
+		isPending: isPendingSignal,
 
 		async checkSession() {
-			isLoadingSignal.value = true;
 			try {
 				const { data } = await authClient.getSession();
 				batch(() => {
 					sessionSignal.value = data?.session ?? null;
 					userSignal.value = data?.user ?? null;
 				});
+			} catch (error) {
+				console.error("Error al verificar sesión:", error);
 			} finally {
-				// Siempre se ejecuta, haya error o no
-				isLoadingSignal.value = false;
+				// 🚀 Liberamos la carga global de la App, pase lo que pase
+				isInitSignal.value = false;
 			}
 		},
 
 		async login(email, password) {
-			isLoadingSignal.value = true;
+			// 🚀 SEGURIDAD: Bloqueo de concurrencia contra doble clic
+			if (isPendingSignal.value) return { data: null, error: new Error("Petición en curso") };
+
+			isPendingSignal.value = true;
 			try {
 				const { data, error } = await authClient.signIn.email({ email, password });
 				if (!error) {
@@ -52,12 +64,15 @@ const createAuthStore = createModel<AuthStore>(() => {
 				}
 				return { data, error };
 			} finally {
-				isLoadingSignal.value = false;
+				isPendingSignal.value = false;
 			}
 		},
 
 		async signUp(email, password, name) {
-			isLoadingSignal.value = true;
+			// 🚀 SEGURIDAD: Bloqueo de concurrencia
+			if (isPendingSignal.value) return { data: null, error: new Error("Petición en curso") };
+
+			isPendingSignal.value = true;
 			try {
 				const { data, error } = await authClient.signUp.email({ email, password, name });
 				if (!error) {
@@ -65,12 +80,15 @@ const createAuthStore = createModel<AuthStore>(() => {
 				}
 				return { data, error };
 			} finally {
-				isLoadingSignal.value = false;
+				isPendingSignal.value = false;
 			}
 		},
 
 		async logout() {
-			isLoadingSignal.value = true;
+			// 🚀 SEGURIDAD: Bloqueo de concurrencia
+			if (isPendingSignal.value) return;
+
+			isPendingSignal.value = true;
 			try {
 				await authClient.signOut();
 				batch(() => {
@@ -78,11 +96,11 @@ const createAuthStore = createModel<AuthStore>(() => {
 					userSignal.value = null;
 				});
 			} finally {
-				isLoadingSignal.value = false;
+				isPendingSignal.value = false;
 			}
 		},
 	};
 });
 
-// Exportamos la instancia única (Singleton) usando el nuevo nombre
+// Exportamos la instancia única (Singleton)
 export const authStore = new createAuthStore();
