@@ -17,6 +17,9 @@ importers:
       '@preact/signals-core':
         specifier: ^1.14.3
         version: 1.14.3
+      '@zag-js/editable':
+        specifier: ^1.42.0
+        version: 1.42.0
       '@zag-js/preact':
         specifier: ^1.42.0
         version: 1.42.0(preact@10.29.2)
@@ -1940,11 +1943,20 @@ packages:
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
+  '@zag-js/anatomy@1.42.0':
+    resolution: {integrity: sha512-F6kRAPxgBZRZmuV5SLywcrGNSclKcAcPAAgSrEdr2Z2dzFgQngbvS4dmdQyGau/vtQ42OlCI48Ri4t0hZxXkMw==}
+
   '@zag-js/core@1.42.0':
     resolution: {integrity: sha512-jE/sbpZvbD+/etbawzhL/L2lP1pPefed5d919je+K5h9b6GAK3lUThleaDUCww3bT53B1L7O5gtqBapW37N1ug==}
 
   '@zag-js/dom-query@1.42.0':
     resolution: {integrity: sha512-JgCNfp7F+YNFNb7Xmt6rXQr3N3V9Mp+pFRvZ8j5BTC3/G8ZYj/enrgOcuVwPlXPBGtA7ysvjig2x1c0Uou/6kg==}
+
+  '@zag-js/editable@1.42.0':
+    resolution: {integrity: sha512-THFNLCCdfSCvO2Q3SEtIzyts8YBpg9aanHx/qu+QDsYF967rIS/jmmcwZri4JQKBGWBDE5tMgVLUfVpGOh2jVw==}
+
+  '@zag-js/interact-outside@1.42.0':
+    resolution: {integrity: sha512-CNNT1OtASacXEst8NMWDGmDwkOQgVQ0Ahc2SpPjSBZoVpxQIfhZ9FoeqcggDX7Nvze7kl6/OwA7pPi5TGQTVZQ==}
 
   '@zag-js/preact@1.42.0':
     resolution: {integrity: sha512-WXtzk4JXZDYQBsjVdzoS6GL3Ctu0nLqmELFq4HFY61zXBNtxX2SWkES4ytnTr0e0mlc6XKkiNq/oh6VF0ytjeQ==}
@@ -4958,6 +4970,8 @@ snapshots:
 
   '@types/trusted-types@2.0.7': {}
 
+  '@zag-js/anatomy@1.42.0': {}
+
   '@zag-js/core@1.42.0':
     dependencies:
       '@zag-js/dom-query': 1.42.0
@@ -4966,6 +4980,20 @@ snapshots:
   '@zag-js/dom-query@1.42.0':
     dependencies:
       '@zag-js/types': 1.42.0
+
+  '@zag-js/editable@1.42.0':
+    dependencies:
+      '@zag-js/anatomy': 1.42.0
+      '@zag-js/core': 1.42.0
+      '@zag-js/dom-query': 1.42.0
+      '@zag-js/interact-outside': 1.42.0
+      '@zag-js/types': 1.42.0
+      '@zag-js/utils': 1.42.0
+
+  '@zag-js/interact-outside@1.42.0':
+    dependencies:
+      '@zag-js/dom-query': 1.42.0
+      '@zag-js/utils': 1.42.0
 
   '@zag-js/preact@1.42.0(preact@10.29.2)':
     dependencies:
