@@ -1,18 +1,29 @@
 @import "tailwindcss";
 
-/* Opcional: Para asegurarnos de que el fondo de la app sea agradable */
 @theme {
   --color-hono: #E36002;
 }
 
-/* 1. FOTOGRAMAS CLAVE */
+/* 1. VARIANTES ZAG (Directas) */
+@custom-variant zag-focus (&[data-focus]);
+@custom-variant zag-edit (&[data-edit]);
+@custom-variant zag-empty (&[data-empty]);
+@custom-variant zag-invalid (&[data-invalid]);
+
+/* 2. VARIANTES ZAG (De Grupo) - ¡Refactorizadas para que Biome las entienda! */
+@custom-variant group-zag-focus (.group[data-focus] &);
+@custom-variant group-zag-edit (.group[data-edit] &);
+
+body {
+  background-color: #f3f4f6;
+}
+
+/* 3. VIEW TRANSITIONS */
 @keyframes slide-to-left { to { transform: translateX(-100%); } }
 @keyframes slide-from-right { from { transform: translateX(100%); } }
 @keyframes slide-to-right { to { transform: translateX(100%); } }
 @keyframes slide-from-left { from { transform: translateX(-100%); } }
 
-/* 2. TRANSICIÓN POR DEFECTO (Adelante) */
-/* Usamos :root directo para no romper la especificidad de la API */
 :root::view-transition-old(root) {
   animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-to-left;
 }
@@ -20,14 +31,13 @@
   animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-from-right;
 }
 
-/* 3. TRANSICIÓN HACIA ATRÁS (Sobrescribe a la anterior) */
-/* CRÍTICO: No debe haber ningún espacio antes de los :: */
+/* Transición hacia atrás (Sobrescribe a la anterior) */
 :root.back-transition::view-transition-old(root) {
+  /* biome-ignore lint/complexity/noImportantStyles: Requisito de la API de View Transitions */
   animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-to-right !important;
 }
+
 :root.back-transition::view-transition-new(root) {
+  /* biome-ignore lint/complexity/noImportantStyles: Requisito de la API de View Transitions */
   animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both slide-from-left !important;
-}
-body {
-  background-color: #f3f4f6; /* Un gris muy clarito */
 }
