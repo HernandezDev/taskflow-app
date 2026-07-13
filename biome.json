@@ -32,5 +32,19 @@
 				"organizeImports": "on"
 			}
 		}
+	},
+	"css": {
+		"parser": {
+			"cssModules": false,
+			"tailwindDirectives": true
+		},
+		"linter": {
+			"enabled": true
+		},
+		"formatter": {
+			"enabled": true,
+			"indentWidth": 2,
+			"quoteStyle": "double"
+		}
 	}
 }

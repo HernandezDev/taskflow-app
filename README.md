@@ -163,3 +163,48 @@ graph TD
 - `METHOD_NOT_ALLOWED_DEFER_SESSION_REQUIRED`
 - `BODY_MUST_BE_AN_OBJECT`
 - `CROSS_SITE_NAVIGATION_LOGIN_BLOCKED`
+
+# 📋 Plan de Tareas Pendientes y Roles de la Arquitectura
+🧱 FASE 1: El Backend y el Contrato Maestro
+Tarea 1: Crear los Schemas de Zod (note.schema.ts)
+
+    El Rol de Zod: Gobernar y comunicar la ENTRADA (El Request).
+
+    Su función exacta: Actúa como el guardia de seguridad del servidor. Dicta la estructura obligatoria de lo que el cliente intenta enviar (ej: "el título es un texto obligatorio de máximo 100 caracteres"). Viaja hacia el frontend a través de TypeScript para avisarle a tu editor de código qué datos exactos debe teclear el programador al mandar una petición, bloqueando cualquier dato corrupto en tiempo de ejecución.
+
+Tarea 2: Crear el Controlador de Hono (notes.router.ts)
+
+    El Rol de Hono RPC: Automatizar e inferir la SALIDA (El Response).
+
+    Su función exacta: Ejecutar la lógica en el servidor (guardar en base de datos). Al responder, no usa Zod; en su lugar, TypeScript lee directamente tu código (return c.json(...)) y deduce automáticamente qué forma tiene la respuesta exitosa.
+
+    El Contrato Maestro: Al final, empaqueta la regla de entrada de Zod y la regla de salida de Hono en un único tipo de TypeScript (type NotesRouter). Este tipo se exporta al frontend para documentar toda la autopista de comunicación.
+
+🧠 FASE 2: El Frontend y la Separación de Cerebros
+Tarea 3: Crear el Cerebro Global (notesStore.ts)
+
+    El Rol de este elemento: El Almacén Inmortal (Persistencia en Memoria RAM).
+
+    ¿Por qué es GLOBAL?: Porque su ciclo de vida es infinito mientras la aplicación esté abierta. No le importan los formularios, ni los errores de pantalla, ni los cargadores (loaders). Su único trabajo es guardar la lista pura de notas que bajó del servidor. Al ser global, si el usuario navega del Dashboard a su Perfil y luego regresa, las notas siguen vivas en la RAM. Evitamos destruir los datos y tener que hacer llamadas repetidas (fetch) a Cloudflare Workers, logrando una velocidad instantánea.
+
+Tarea 4: Crear el Cerebro Local (NoteEditorModel.ts)
+
+    El Rol de este elemento: El Trabajador Efímero (Estado de Interacción).
+
+    ¿Por qué está ATADO AL CICLO DE VISTA?: Porque gestiona la basura temporal de la interfaz: el texto que el usuario está escribiendo en el <Editable> en ese instante, el booleano isSaving (para mostrar el spinner de carga), o el mensaje de error si el servidor se cae.
+
+    La mitigación del Estado Zombie: Al estar atado al ciclo de vida del componente, en el momento en que el usuario cierra el editor o cambia de pantalla, este modelo se destruye por completo en la memoria. Si el usuario vuelve a entrar al editor de notas 10 minutos después, el modelo nace completamente de cero, limpio, sin textos a medio borrar ni errores viejos bloqueando la pantalla.
+
+🔄 El Flujo de Cierre (Cómo colaboran)
+
+Cuando el usuario termine de editar en el componente tonto y presione guardar:
+
+    El Modelo Local recopila el texto y lo envía al backend usando el cliente tipado por el Router de Hono.
+
+    Zod valida en el servidor que la entrada sea correcta.
+
+    El servidor guarda la nota y devuelve la respuesta que Hono RPC ya documentó.
+
+    Si la respuesta es exitosa, el Modelo Local toma esa nota nueva y se la entrega al Store Global.
+
+    El Store Global actualiza su array en memoria y, gracias a la reactividad atómica de las Signals, la pantalla se redibuja en milisegundos sin re-renderizar todo el Dashboard.
