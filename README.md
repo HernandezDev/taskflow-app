@@ -208,3 +208,50 @@ Cuando el usuario termine de editar en el componente tonto y presione guardar:
     Si la respuesta es exitosa, el Modelo Local toma esa nota nueva y se la entrega al Store Global.
 
     El Store Global actualiza su array en memoria y, gracias a la reactividad atómica de las Signals, la pantalla se redibuja en milisegundos sin re-renderizar todo el Dashboard.
+
+## Estructura de carpetas de src
+
+./src
+├── client
+│   ├── App.tsx
+│   ├── client.tsx
+│   ├── components
+│   │   ├── router
+│   │   │   ├── GuestRoute.tsx
+│   │   │   └── PrivateRoute.tsx
+│   │   └── ui
+│   │       └── Editable.tsx
+│   ├── hooks
+│   │   ├── usePrefetch.ts
+│   │   ├── useSignupForm.ts
+│   │   └── useTransitionRoute.ts
+│   ├── lib
+│   │   ├── api.ts
+│   │   ├── auth-client.ts
+│   │   ├── createRpcModel.ts
+│   │   ├── traductorAuth.ts
+│   │   └── validarRegistro.ts
+│   ├── models
+│   │   └── hint.model.ts
+│   ├── pages
+│   │   ├── DashboardScreen.tsx
+│   │   ├── LoginScreen.tsx
+│   │   └── SignupScreen.tsx
+│   ├── stores
+│   │   └── authStore.ts
+│   └── style.css
+└── server
+    ├── auth
+    │   ├── cli.ts
+    │   └── index.ts
+    ├── db
+    │   ├── auth.schema.ts
+    │   ├── index.ts
+    │   └── tasks.schema.ts
+    ├── index.ts
+    ├── infra.ts
+    ├── routes
+    │   └── tasks.router.ts
+    ├── types.ts
+    └── validations
+        └── task.validation.ts
