@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { getAuth } from "./infra";
-import { notesRouter } from "./routes/notes.router";
+import { tasksRouter } from "./routes/tasks.router";
 import type { AppEnv } from "./types";
 
 const app = new Hono<AppEnv>();
@@ -29,7 +29,7 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => {
 // 3. API - Sub-enrutador encadenable
 const apiRoutes = new Hono<AppEnv>()
 	.get("/health", (c) => c.json({ status: "ok" }))
-	.route("/notes", notesRouter);
+	.route("/tasks", tasksRouter);
 
 // Montamos la API y exportamos el tipo para el RPC tipado
 const routes = app.route("/api", apiRoutes);
