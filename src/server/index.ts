@@ -29,7 +29,6 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => {
 // 3. API - Sub-enrutador encadenable
 const apiRoutes = new Hono<AppEnv>()
 	.get("/health", (c) => c.json({ status: "ok" }))
-	.get("/hint", (c) => c.json({ message: "¡Arquitectura Lazy-Singleton activa! ⚡" }))
 	.route("/notes", notesRouter);
 
 // Montamos la API y exportamos el tipo para el RPC tipado
