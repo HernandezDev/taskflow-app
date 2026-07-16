@@ -9,7 +9,7 @@ export function useSignupForm() {
 	const reglasPass = useSignal({ length: false, upper: false, number: false });
 
 	// 🚀 2. LA MAGIA: El hook se encarga de precargar Zod y el esquema en segundo plano
-	const obtenerValidador = usePrefetch(() => import("../lib/validarRegistro"));
+	const obtenerValidador = usePrefetch(() => import("../lib/signUpValidator"));
 
 	const limpiarCampo = (campo: string) => {
 		if (erroresTexto.value[campo]) {
@@ -27,7 +27,7 @@ export function useSignupForm() {
 		// Solo necesitamos evaluar Zod en tiempo real para las contraseñas
 		if (campo === "password" || campo === "confirmPassword") {
 			const modulo = await obtenerValidador();
-			const resultado = modulo.validarFormulario(form.value);
+			const resultado = modulo.validateForm(form.value);
 			reglasPass.value = resultado.reglasPassword;
 		}
 	};
@@ -36,7 +36,7 @@ export function useSignupForm() {
 	const validarSubmit = async () => {
 		erroresTexto.value = {};
 		const modulo = await obtenerValidador();
-		const resultado = modulo.validarFormulario(form.value);
+		const resultado = modulo.validateForm(form.value);
 
 		if (!resultado.exito) {
 			erroresTexto.value = resultado.erroresCampos;

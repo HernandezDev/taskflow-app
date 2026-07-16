@@ -18,7 +18,7 @@ const registroSchema = z
 
 export type DatosRegistro = z.infer<typeof registroSchema>;
 
-export function validarFormulario(datos: Record<string, string>) {
+export function validateForm(datos: Record<string, string>) {
 	const resultado = registroSchema.safeParse(datos);
 
 	if (resultado.success) {
