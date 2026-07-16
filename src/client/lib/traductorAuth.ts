@@ -44,8 +44,15 @@ export function traducirErrorAuth(errorAuth?: unknown): string {
 		return mensajesPorCodigo[codigoError];
 	}
 
-	const mensaje =
-		`${errorNormalizado.message || ""} ${errorNormalizado.body?.message || ""} ${errorNormalizado.code || ""} ${errorNormalizado.body?.code || ""}`.toLowerCase();
+	const mensaje = [
+		errorNormalizado.message,
+		errorNormalizado.body?.message,
+		errorNormalizado.code,
+		errorNormalizado.body?.code,
+	]
+		.filter(Boolean)
+		.join(" ")
+		.toLowerCase();
 	const status = errorNormalizado.status ?? errorNormalizado.statusCode;
 
 	if (
