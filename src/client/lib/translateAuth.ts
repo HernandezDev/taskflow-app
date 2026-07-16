@@ -33,7 +33,7 @@ function esCodigoTraducible(
 	return typeof codigo === "string" && codigo in mensajesPorCodigo;
 }
 
-export function traducirErrorAuth(errorAuth?: unknown): string {
+export function translateErrorAuth(errorAuth?: unknown): string {
 	if (!errorAuth) return "Ocurrió un error inesperado. Por favor, intentá de nuevo.";
 
 	const errorNormalizado =

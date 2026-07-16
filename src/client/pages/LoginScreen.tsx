@@ -1,7 +1,7 @@
 import { CaretRightIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import { useTransitionRoute } from "../hooks/useTransitionRoute";
-import { traducirErrorAuth } from "../lib/traductorAuth";
+import { translateErrorAuth } from "../lib/translateAuth";
 import { authStore } from "../stores/authStore";
 
 export function LoginScreen() {
@@ -23,12 +23,12 @@ export function LoginScreen() {
       const { error } = await authStore.login(email.value, password.value);
 
       if (error) {
-        errorLocal.value = traducirErrorAuth(error);
+        errorLocal.value = translateErrorAuth(error);
       } else {
         route("/dashboard");
       }
     } catch (err) {
-      errorLocal.value = traducirErrorAuth(err);
+      errorLocal.value = translateErrorAuth(err);
     }
   };
 
