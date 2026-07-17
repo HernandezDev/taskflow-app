@@ -12,3 +12,7 @@ export const updateTaskValidator = z.object({
 	status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED"]).optional(),
 	deadline: z.number().int().positive().optional(),
 });
+
+export const taskIdParamValidator = z.object({
+	id: z.string().min(1, "El ID de la tarea es requerido y no puede estar vacío"),
+});

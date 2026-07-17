@@ -1,10 +1,14 @@
 import { zValidator } from "@hono/zod-validator";
-import { eq } from "drizzle-orm"; // Solo necesitamos 'eq' por ahora
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { task } from "../db";
 import { getAuth, getDb } from "../infra";
 import type { AppEnv } from "../types";
-import { createTaskValidator } from "../validations/task.validation";
+import {
+	createTaskValidator,
+	taskIdParamValidator,
+	updateTaskValidator,
+} from "../validations/task.validation";
 
 export const tasksRouter = new Hono<AppEnv>()
 	// --------------------------------------------------------
@@ -48,4 +52,65 @@ export const tasksRouter = new Hono<AppEnv>()
 			.returning();
 
 		return c.json({ success: true, data: newTask }, 201);
+	})
+	.patch(
+		"/:id",
+		zValidator("param", taskIdParamValidator),
+		zValidator("json", updateTaskValidator),
+		async (c) => {
+			const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
+			const session = await auth.api.getSession({ headers: c.req.raw.headers });
+
+			if (!session?.user) {
+				return c.json({ success: false, error: "No autorizado" }, 401);
+			}
+
+			// Ya no usamos c.req.param("id"). Usamos el dato validado por Zod.
+			const { id: taskId } = c.req.valid("param");
+			const body = c.req.valid("json");
+			const db = getDb(c.env);
+
+			const [updatedTask] = await db
+				.update(task)
+				.set({
+					title: body.title,
+					status: body.status,
+					deadline: body.deadline ? new Date(body.deadline) : undefined,
+				})
+				.where(and(eq(task.id, taskId), eq(task.userId, session.user.id)))
+				.returning();
+
+			if (!updatedTask) {
+				return c.json({ success: false, error: "Tarea no encontrada o sin permisos" }, 404);
+			}
+
+			return c.json({ success: true, data: updatedTask });
+		},
+	)
+
+	// --------------------------------------------------------
+	// 4. DELETE /api/tasks/:id -> Eliminar tarea
+	// --------------------------------------------------------
+	.delete("/:id", zValidator("param", taskIdParamValidator), async (c) => {
+		const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
+		const session = await auth.api.getSession({ headers: c.req.raw.headers });
+
+		if (!session?.user) {
+			return c.json({ success: false, error: "No autorizado" }, 401);
+		}
+
+		// Extracción segura del ID
+		const { id: taskId } = c.req.valid("param");
+		const db = getDb(c.env);
+
+		const [deletedTask] = await db
+			.delete(task)
+			.where(and(eq(task.id, taskId), eq(task.userId, session.user.id)))
+			.returning();
+
+		if (!deletedTask) {
+			return c.json({ success: false, error: "Tarea no encontrada o sin permisos" }, 404);
+		}
+
+		return c.json({ success: true, data: deletedTask });
 	});

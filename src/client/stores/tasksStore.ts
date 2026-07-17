@@ -1,10 +1,11 @@
-import type { InferResponseType } from "hono/client";
+import type { InferRequestType, InferResponseType } from "hono/client";
 import { rpc } from "../lib/api";
 import { createRpcModel } from "../lib/createRpcModel";
 
 // 1. INFERENCIA DE TIPOS
 type TasksResponse = InferResponseType<typeof rpc.api.tasks.$get, 200>;
 export type Task = TasksResponse extends { data: (infer U)[] } ? U : never;
+type UpdateTaskInput = InferRequestType<(typeof rpc.api.tasks)[":id"]["$patch"]>["json"];
 
 // 2. FUNCIÓN DE FETCH
 const fetchTasksFn = async (abortSignal: AbortSignal): Promise<Task[]> => {
@@ -43,6 +44,46 @@ export const addTask = async (title: string, deadline?: number) => {
 		return true;
 	} catch (err) {
 		console.error("[tasksStore] addTask:", err);
+		return false;
+	}
+};
+
+export const updateTask = async (id: string, updates: UpdateTaskInput) => {
+	try {
+		const res = await rpc.api.tasks[":id"].$patch({
+			param: { id }, // Corregido: param (singular)
+			json: updates, // Ahora tipado estrictamente por InferRequestType
+		});
+
+		if (!res.ok) {
+			throw new Error("Error al actualizar la tarea");
+		}
+
+		const json = await res.json();
+
+		// Actualizamos la señal reactiva
+		tasksStore.mutate((prevTasks) => prevTasks.map((task) => (task.id === id ? json.data : task)));
+		return true;
+	} catch (err) {
+		console.error("[tasksStore] updateTask:", err);
+		return false;
+	}
+};
+
+export const deleteTask = async (id: string) => {
+	try {
+		const res = await rpc.api.tasks[":id"].$delete({
+			param: { id },
+		});
+
+		if (!res.ok) {
+			throw new Error("Error al eliminar la tarea");
+		}
+
+		tasksStore.mutate((prevTasks) => prevTasks.filter((task) => task.id !== id));
+		return true;
+	} catch (err) {
+		console.error("[tasksStore] deleteTask:", err);
 		return false;
 	}
 };
