@@ -19,6 +19,7 @@
 		"@preact/signals-core": "^1.14.3",
 		"@zag-js/editable": "^1.42.0",
 		"@zag-js/preact": "^1.42.0",
+		"@zag-js/radio-group": "^1.42.0",
 		"better-auth": "^1.6.20",
 		"drizzle-orm": "^0.45.2",
 		"hono": "^4.12.26",
