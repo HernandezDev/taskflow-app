@@ -4,9 +4,6 @@ import { useId } from "preact/hooks";
 
 interface EditableProps {
   value: string;
-  // Sincronización en tiempo real para el Signal
-  onValueChange?: (value: string) => void;
-  // Acción de negocio (ej: Guardar en Cloudflare D1)
   onCommit: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
@@ -14,13 +11,11 @@ interface EditableProps {
 
 export function Editable({ 
   value, 
-  onValueChange, 
   onCommit, 
   placeholder = "Editar...",
   disabled = false
 }: EditableProps) {
   
-  // 1. La Máquina (Totalmente Controlada por Props/Signals)
   const service = useMachine(editable.machine, {
     id: useId(),
     value, 
@@ -29,12 +24,7 @@ export function Editable({
     activationMode: "dblclick", 
     autoResize: true,
     
-    // Mantiene tu Signal sincronizado en cada pulsación de tecla
-    onValueChange: (details) => {
-      if (onValueChange) onValueChange(details.value);
-    },
-    
-    // Dispara la mutación pesada hacia tu base de datos
+    // Dispara la mutación pesada hacia tu orquestador asíncrono
     onValueCommit: (details) => {
       onCommit(details.value);
     },
@@ -44,7 +34,7 @@ export function Editable({
   const api = editable.connect(service, normalizeProps);
 
   return (
-    // 3. Agregamos 'group' para aplicar el patrón de estilos basados en el padre
+    // 3. Patrón de estilos grupales (Tailwind)
     <div {...api.getRootProps()} class="group flex flex-col gap-2 w-full">
       <div {...api.getAreaProps()} class="relative w-full">
         <input 
@@ -53,7 +43,7 @@ export function Editable({
         />
         <span 
           {...api.getPreviewProps()} 
-          // 4. Estilos reactivos al estado sin usar JavaScript condicional
+          // 4. Estilos reactivos delegados a atributos de datos (data-*)
           class="cursor-text px-2 py-1 rounded transition-colors text-gray-800 
                  hover:bg-gray-100 group-data-disabled:opacity-50 
                  group-data-disabled:cursor-not-allowed
