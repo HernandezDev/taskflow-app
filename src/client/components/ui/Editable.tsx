@@ -43,11 +43,12 @@ export function Editable({
         />
         <span 
           {...api.getPreviewProps()} 
-          // 4. Estilos reactivos delegados a atributos de datos (data-*)
           class="cursor-text px-2 py-1 rounded transition-colors text-gray-800 
-                 hover:bg-gray-100 group-data-disabled:opacity-50 
-                 group-data-disabled:cursor-not-allowed
-                 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+               hover:bg-gray-100 
+                group-zag-disabled:opacity-50 
+                group-zag-disabled:cursor-not-allowed
+                zag-empty:before:content-[attr(data-placeholder)] 
+              zag-empty:before:text-gray-400"
           data-placeholder={placeholder}
         />
       </div>
