@@ -49,16 +49,16 @@ export function TaskStatusControl({ taskId, currentStatus }: TaskStatusControlPr
                 class="flex items-center gap-1 bg-gray-100 p-1 rounded-md border border-gray-200 w-full"
             >
                 {STATUS_OPTIONS.map((opt) => (
-                    <label
-                        key={opt.value}
-                        {...api.getItemProps({ value: opt.value })}
-                        class="
+                    <label 
+                key={opt.value} 
+                {...api.getItemProps({ value: opt.value })}
+                class="
                 flex-1 text-center cursor-pointer px-3 py-1 text-xs font-medium rounded transition-all select-none
-                data-[state=checked]:bg-white data-[state=checked]:text-blue-600 data-[state=checked]:shadow-sm
-                data-disabled:opacity-40 data-disabled:cursor-not-allowed
+                zag-checked:bg-white zag-checked:text-blue-600 zag-checked:shadow-sm
+                zag-disabled:opacity-40 zag-disabled:cursor-not-allowed
                 hover:not([data-disabled]):bg-gray-200 text-gray-500
                 "
-                    >
+                >
                         <span {...api.getItemTextProps({ value: opt.value })}>
                             {opt.label}
                         </span>

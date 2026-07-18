@@ -9,6 +9,8 @@
 @custom-variant zag-edit (&[data-edit]);
 @custom-variant zag-empty (&[data-empty]);
 @custom-variant zag-invalid (&[data-invalid]);
+@custom-variant zag-disabled (&[data-disabled]);
+@custom-variant zag-checked (&[data-state=checked]);
 
 /* 2. VARIANTES ZAG (De Grupo) - ¡Refactorizadas para que Biome las entienda! */
 @custom-variant group-zag-focus (.group[data-focus] &);
