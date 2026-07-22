@@ -2,7 +2,7 @@ import { CaretLeftIcon, CheckCircleIcon, CircleIcon } from "@phosphor-icons/reac
 import { useSignal } from "@preact/signals";
 import { useSignupForm } from "../hooks/useSignupForm";
 import { useTransitionRoute } from "../hooks/useTransitionRoute";
-import { traducirErrorAuth } from "../lib/traductorAuth";
+import { translateErrorAuth } from "../lib/translateAuth";
 import { authStore } from "../stores/authStore";
 
 export function SignupScreen() {
@@ -33,12 +33,12 @@ export function SignupScreen() {
       );
 
       if (error) {
-        errorLocal.value = traducirErrorAuth(error);
+        errorLocal.value = translateErrorAuth(error);
       } else {
         route("/dashboard");
       }
     } catch (err) {
-      errorLocal.value = traducirErrorAuth(err);
+      errorLocal.value = translateErrorAuth(err);
     }
   };
 

@@ -9,7 +9,7 @@ export const task = sqliteTable(
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
 		title: text("title").notNull(),
-		status: text("status", { enum: ["PENDING", "COMPLETED"] })
+		status: text("status", { enum: ["PENDING", "IN_PROGRESS", "COMPLETED"] })
 			.default("PENDING")
 			.notNull(),
 		deadline: integer("deadline", { mode: "timestamp_ms" }),

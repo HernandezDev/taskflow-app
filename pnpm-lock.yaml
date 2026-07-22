@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@hono/zod-validator':
+        specifier: ^0.9.0
+        version: 0.9.0(hono@4.12.26)(zod@4.4.3)
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -23,6 +26,9 @@ importers:
       '@zag-js/preact':
         specifier: ^1.42.0
         version: 1.42.0(preact@10.29.2)
+      '@zag-js/radio-group':
+        specifier: ^1.42.0
+        version: 1.42.0
       better-auth:
         specifier: ^1.6.20
         version: 1.6.20(@cloudflare/workers-types@4.20260621.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260621.1)(kysely@0.29.2))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1287,6 +1293,12 @@ packages:
       wrangler:
         optional: true
 
+  '@hono/zod-validator@0.9.0':
+    resolution: {integrity: sha512-n0ZSXmCiHVIp4Y5wlOOyZCeTd/rsawA/qW1cipB8QOYKZ9N8Tk0nZUZCXho9cu374AN4JpDNKioNKBJ/W+LBug==}
+    peerDependencies:
+      hono: '>=4.11.2'
+      zod: ^3.25.0 || ^4.0.0
+
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
     engines: {node: '>=18'}
@@ -1955,6 +1967,9 @@ packages:
   '@zag-js/editable@1.42.0':
     resolution: {integrity: sha512-THFNLCCdfSCvO2Q3SEtIzyts8YBpg9aanHx/qu+QDsYF967rIS/jmmcwZri4JQKBGWBDE5tMgVLUfVpGOh2jVw==}
 
+  '@zag-js/focus-visible@1.42.0':
+    resolution: {integrity: sha512-zT1Fk+8m6x6hzoD5fOIEV4JQIX33pwkBzANqwruQwaSqkOYtI2FmsG71YHnzKvrBppG2okPrRHEMyZEgfshIcQ==}
+
   '@zag-js/interact-outside@1.42.0':
     resolution: {integrity: sha512-CNNT1OtASacXEst8NMWDGmDwkOQgVQ0Ahc2SpPjSBZoVpxQIfhZ9FoeqcggDX7Nvze7kl6/OwA7pPi5TGQTVZQ==}
 
@@ -1962,6 +1977,9 @@ packages:
     resolution: {integrity: sha512-WXtzk4JXZDYQBsjVdzoS6GL3Ctu0nLqmELFq4HFY61zXBNtxX2SWkES4ytnTr0e0mlc6XKkiNq/oh6VF0ytjeQ==}
     peerDependencies:
       preact: '>=10.0.0'
+
+  '@zag-js/radio-group@1.42.0':
+    resolution: {integrity: sha512-VtoN9/d3HCe/oumjdwKzv/KilF2aLzbt1IYpejXF7Cwat8xmqnCoxiA2PLjE9NfD97ZM7grng1YGcjqrWOWvuQ==}
 
   '@zag-js/store@1.42.0':
     resolution: {integrity: sha512-qQ5LB+l2dR1rZFCsErn9PeSrOADjnsvDl1NreEN/AaKXw9RK0YiQDqaCh7ndqjjA72UAcrnzgXsS0AAqxCC+MQ==}
@@ -4499,6 +4517,11 @@ snapshots:
       miniflare: 4.20260617.1
       wrangler: 4.103.0(@cloudflare/workers-types@4.20260621.1)
 
+  '@hono/zod-validator@0.9.0(hono@4.12.26)(zod@4.4.3)':
+    dependencies:
+      hono: 4.12.26
+      zod: 4.4.3
+
   '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.34.5':
@@ -4990,6 +5013,10 @@ snapshots:
       '@zag-js/types': 1.42.0
       '@zag-js/utils': 1.42.0
 
+  '@zag-js/focus-visible@1.42.0':
+    dependencies:
+      '@zag-js/dom-query': 1.42.0
+
   '@zag-js/interact-outside@1.42.0':
     dependencies:
       '@zag-js/dom-query': 1.42.0
@@ -5002,6 +5029,15 @@ snapshots:
       '@zag-js/types': 1.42.0
       '@zag-js/utils': 1.42.0
       preact: 10.29.2
+
+  '@zag-js/radio-group@1.42.0':
+    dependencies:
+      '@zag-js/anatomy': 1.42.0
+      '@zag-js/core': 1.42.0
+      '@zag-js/dom-query': 1.42.0
+      '@zag-js/focus-visible': 1.42.0
+      '@zag-js/types': 1.42.0
+      '@zag-js/utils': 1.42.0
 
   '@zag-js/store@1.42.0':
     dependencies:
