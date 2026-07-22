@@ -1,3 +1,4 @@
+import { useSignal, useSignalEffect } from "@preact/signals";
 import * as editable from "@zag-js/editable";
 import { normalizeProps, useMachine } from "@zag-js/preact";
 import { useId } from "preact/hooks";
@@ -16,13 +17,29 @@ export function Editable({
   disabled = false
 }: EditableProps) {
   
+  // 1. Estado Intermediario (El "puente" reactivo)
+  const localValue = useSignal(value);
+
+  // 2. Sincronización Top-Down: Si D1 manda un nuevo título, actualizamos el input
+  useSignalEffect(() => {
+    localValue.value = value;
+  });
+  
   const service = useMachine(editable.machine, {
     id: useId(),
-    value, 
+    // 3. Bind Controlado estricto
+    value: localValue.value, 
     disabled,
     submitMode: "both",
-    activationMode: "click", // 🚀 UX: Un solo clic para editar
+    activationMode: "click",
     autoResize: true,
+    
+    // 4. Actualización Bottom-Up Local (Permite escribir sin bloquearse)
+    onValueChange: (details) => {
+      localValue.value = details.value; 
+    },
+    
+    // 5. Commit Final (Dispara la mutación a tu Orquestador -> Hono -> Cloudflare D1)
     onValueCommit: (details) => {
       onCommit(details.value);
     },
@@ -33,13 +50,12 @@ export function Editable({
   return (
     <div {...api.getRootProps()} class="group flex flex-col gap-2 w-full">
       <div {...api.getAreaProps()} class="relative w-full">
-        
         <input 
           {...api.getInputProps()} 
           class="w-full bg-white outline-none ring-2 ring-blue-500 rounded px-2 py-1 text-gray-900 shadow-sm transition-all"
         />
         
-        {/* 🚀 CORRECCIÓN FATAL: El span ya no se auto-cierra. Le pasamos api.value o el placeholder como hijo (children) */}
+        {/* Renderizado explícito sin auto-cierre */}
         <span 
           {...api.getPreviewProps()} 
           class="block cursor-text px-2 py-1 rounded transition-colors text-gray-800 
@@ -50,7 +66,6 @@ export function Editable({
         >
           {api.value || placeholder}
         </span>
-
       </div>
     </div>
   );
