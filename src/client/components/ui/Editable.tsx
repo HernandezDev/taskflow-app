@@ -20,37 +20,37 @@ export function Editable({
     id: useId(),
     value, 
     disabled,
-    submitMode: "both", // Guarda al presionar Enter o al hacer clic fuera (blur)
-    activationMode: "dblclick", 
+    submitMode: "both",
+    activationMode: "click", // 🚀 UX: Un solo clic para editar
     autoResize: true,
-    
-    // Dispara la mutación pesada hacia tu orquestador asíncrono
     onValueCommit: (details) => {
       onCommit(details.value);
     },
   });
 
-  // 2. Traductor a Preact
   const api = editable.connect(service, normalizeProps);
 
   return (
-    // 3. Patrón de estilos grupales (Tailwind)
     <div {...api.getRootProps()} class="group flex flex-col gap-2 w-full">
       <div {...api.getAreaProps()} class="relative w-full">
+        
         <input 
           {...api.getInputProps()} 
           class="w-full bg-white outline-none ring-2 ring-blue-500 rounded px-2 py-1 text-gray-900 shadow-sm transition-all"
         />
+        
+        {/* 🚀 CORRECCIÓN FATAL: El span ya no se auto-cierra. Le pasamos api.value o el placeholder como hijo (children) */}
         <span 
           {...api.getPreviewProps()} 
-          class="cursor-text px-2 py-1 rounded transition-colors text-gray-800 
-               hover:bg-gray-100 
-                group-zag-disabled:opacity-50 
-                group-zag-disabled:cursor-not-allowed
-                zag-empty:before:content-[attr(data-placeholder)] 
-              zag-empty:before:text-gray-400"
-          data-placeholder={placeholder}
-        />
+          class="block cursor-text px-2 py-1 rounded transition-colors text-gray-800 
+                 hover:bg-gray-100 
+                 group-zag-disabled:opacity-50 
+                 group-zag-disabled:cursor-not-allowed
+                 truncate"
+        >
+          {api.value || placeholder}
+        </span>
+
       </div>
     </div>
   );
