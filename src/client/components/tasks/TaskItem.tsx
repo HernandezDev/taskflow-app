@@ -23,10 +23,20 @@ export function TaskItem({ task }: TaskItemProps) {
         }
     };
 
-    const handleTitleCommit = async (newTitle: string) => {
-        if (newTitle === task.title || newTitle.trim() === "") return;
-        await updateTask(task.id, { title: newTitle.trim() });
-    };
+    const handleTitleCommit = async (newTitle: string): Promise<boolean> => {
+    const trimmedTitle = newTitle.trim();
+    
+    // Vía de escape 1: Si es igual al original o está vacío, no consideramos que la red haya fallado.
+    // Retornamos 'true' para indicar al hook que NO debe hacer rollback visual, 
+    // simplemente debe cerrar el modo de edición silenciosamente.
+    if (trimmedTitle === task.title || trimmedTitle === "") {
+        return true; 
+    }
+
+    // Vía de ejecución 2: updateTask ya retorna un Promise<boolean> desde tasksStore.ts.
+    // Lo retornamos directamente para que el hook procese el éxito o el fallo real de Cloudflare D1.
+    return await updateTask(task.id, { title: trimmedTitle });
+};
 
     return (
         <div 
