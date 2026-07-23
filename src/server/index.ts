@@ -6,25 +6,25 @@ import type { AppEnv } from "./types";
 
 const app = new Hono<AppEnv>();
 
-// 1. CORS: Defensa de perímetro
-app.use(
-	"/*",
-	cors({
-		origin: (origin) => origin, // Ajusta a tu FRONTEND_URL en producción
-		credentials: true,
-	}),
-);
-
-// 2. Auth Route: Solo se inicializa si alguien llama a /api/auth
+// 1. 🛡️ RUTA CRÍTICA ADELANTADA: Auth se procesa antes de cualquier CORS o parseo de stream.
+// Se mantiene tu instanciación dinámica basada en Origin y URL.
 app.on(["GET", "POST"], "/api/auth/*", (c) => {
 	try {
-		// Le pasamos la URL y el header Origin
 		const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
 		return auth.handler(c.req.raw);
 	} catch (_e) {
 		return c.json({ error: "No autorizado" }, 403);
 	}
 });
+
+// 2. CORS: Defensa de perímetro para el resto de la API
+app.use(
+	"/*",
+	cors({
+		origin: (origin) => origin,
+		credentials: true,
+	}),
+);
 
 // 3. API - Sub-enrutador encadenable
 const apiRoutes = new Hono<AppEnv>()
