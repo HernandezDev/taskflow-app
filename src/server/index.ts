@@ -10,7 +10,7 @@ const app = new Hono<AppEnv>();
 // Se mantiene tu instanciación dinámica basada en Origin y URL.
 app.all("/api/auth/*", (c) => {
 	try {
-		const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
+		const auth = getAuth(c.env, c.req.raw);
 		return auth.handler(c.req.raw);
 	} catch (_e) {
 		return c.json({ error: "No autorizado" }, 403);
