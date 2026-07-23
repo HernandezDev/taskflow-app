@@ -8,7 +8,7 @@ const app = new Hono<AppEnv>();
 
 // 1. 🛡️ RUTA CRÍTICA ADELANTADA: Auth se procesa antes de cualquier CORS o parseo de stream.
 // Se mantiene tu instanciación dinámica basada en Origin y URL.
-app.on(["GET", "POST"], "/api/auth/*", (c) => {
+app.all("/api/auth/*", (c) => {
 	try {
 		const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
 		return auth.handler(c.req.raw);
