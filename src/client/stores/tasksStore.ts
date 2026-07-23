@@ -2,6 +2,7 @@ import { effect } from "@preact/signals-core";
 import type { InferRequestType, InferResponseType } from "hono/client";
 import { rpc } from "../lib/api";
 import { createRpcModel } from "../lib/createRpcModel";
+import { authStore } from "./authStore"; // 1. INYECCIÓN DE DEPENDENCIA
 
 // 1. INFERENCIA DE TIPOS
 type TasksResponse = InferResponseType<typeof rpc.api.tasks.$get, 200>;
@@ -34,12 +35,10 @@ const fetchTasksFn = async (abortSignal: AbortSignal): Promise<Task[]> => {
 		init: { signal: abortSignal },
 	});
 
-	// Si hubo un error 401 (No autorizado) u otro fallo HTTP, cortamos aquí
 	if (!res.ok) {
 		throw new Error("Error en la petición de tareas");
 	}
 
-	// TypeScript sabe que, llegados aquí, 'json' es estrictamente { success: true, data: Task[] }
 	const json = await res.json();
 	return json.data;
 };
@@ -47,6 +46,19 @@ const fetchTasksFn = async (abortSignal: AbortSignal): Promise<Task[]> => {
 // 3. INSTANCIA DEL CEREBRO GLOBAL
 export const tasksStore = createRpcModel<Task[]>(fetchTasksFn, getInitialOfflineData());
 
+// --- NUEVO: BARRERA DE ORQUESTACIÓN DETERMINISTA ---
+effect(() => {
+	const isInit = authStore.isInitializing.value;
+	const isAuth = authStore.isAuthenticated.value;
+
+	// Solo dispara la mutación de red si la sesión finalizó su carga y el token es válido
+	if (!isInit && isAuth) {
+		tasksStore.execute();
+	}
+});
+// ---------------------------------------------------
+
+// Sincronización offline
 effect(() => {
 	if (typeof window === "undefined") {
 		return;
@@ -70,7 +82,6 @@ export const addTask = async (title: string, deadline?: number) => {
 			throw new Error("Error al crear la tarea");
 		}
 
-		// De nuevo, gracias a !res.ok, sabemos que la tarea se creó perfectamente
 		const json = await res.json();
 
 		tasksStore.mutate((prevTasks) => [...prevTasks, json.data]);
@@ -84,8 +95,8 @@ export const addTask = async (title: string, deadline?: number) => {
 export const updateTask = async (id: string, updates: UpdateTaskInput) => {
 	try {
 		const res = await rpc.api.tasks[":id"].$patch({
-			param: { id }, // Corregido: param (singular)
-			json: updates, // Ahora tipado estrictamente por InferRequestType
+			param: { id },
+			json: updates,
 		});
 
 		if (!res.ok) {
@@ -94,7 +105,6 @@ export const updateTask = async (id: string, updates: UpdateTaskInput) => {
 
 		const json = await res.json();
 
-		// Actualizamos la señal reactiva
 		tasksStore.mutate((prevTasks) => prevTasks.map((task) => (task.id === id ? json.data : task)));
 		return true;
 	} catch (err) {
@@ -120,6 +130,3 @@ export const deleteTask = async (id: string) => {
 		return false;
 	}
 };
-
-// Puedes añadir fácilmente acciones como updateTask o deleteTask aquí mismo
-// y seguir usando tasksStore.mutate() para actualizar la lista de forma optimista.

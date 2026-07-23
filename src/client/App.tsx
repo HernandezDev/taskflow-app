@@ -1,4 +1,3 @@
-import { effect } from '@preact/signals-core';
 import { useEffect } from 'preact/hooks';
 import { ErrorBoundary, LocationProvider, Route, Router } from 'preact-iso';
 
@@ -9,20 +8,6 @@ import { LoginScreen } from './pages/LoginScreen';
 import { SignupScreen } from './pages/SignupScreen';
 
 import { authStore } from './stores/authStore';
-import { tasksStore } from './stores/tasksStore';
-
-effect(() => {
-  const isAuthenticated = authStore.isAuthenticated.value;
-  const isInitializing = authStore.isInitializing.value;
-
-  if (isInitializing) {
-    return;
-  }
-
-  if (isAuthenticated) {
-    tasksStore.execute();
-  }
-});
 
 const NotFoundScreen = () => (
   <div class="p-8 text-center text-red-500">
@@ -31,6 +16,7 @@ const NotFoundScreen = () => (
 );
 
 export function App() {
+  // El único side-effect permitido aquí: Inicializar la sesión al montar la app
   useEffect(() => {
     authStore.checkSession();
   }, []);
