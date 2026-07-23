@@ -20,7 +20,6 @@ const NotFoundScreen = () => (
 const GlobalShield = () => (
     <div class="min-h-screen flex flex-col items-center justify-center gap-3 bg-gray-50 text-gray-500">
         <CircleNotchIcon size={32} class="animate-spin text-blue-600" />
-        <span class="text-sm font-medium animate-pulse">Sincronizando sesión...</span>
     </div>
 );
 
