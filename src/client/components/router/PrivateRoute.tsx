@@ -1,6 +1,6 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
+import { useSignalEffect } from "@preact/signals";
 import type { ComponentType } from "preact";
-import { useEffect } from "preact/hooks";
 import { useLocation } from "preact-iso";
 import { authStore } from "../../stores/authStore";
 
@@ -9,24 +9,29 @@ export interface RouteWrapperProps {
     component: ComponentType<any>;
     path?: string;
     default?: boolean;
-    // biome-ignore lint/suspicious/noExplicitAny: Permitimos cualquier prop extra del Router
+    // biome-ignore lint/suspicious/noExplicitAny: Permitimos cualquier prop extra
     [key: string]: any;
 }
 
 export function PrivateRoute({ component: Component, ...rest }: RouteWrapperProps) {
     const { route } = useLocation();
 
-    useEffect(() => {
-        // 🚀 CAMBIO CLAVE: Escuchamos isInitializing en vez de isPending
-        if (!authStore.isInitializing.value && !authStore.isAuthenticated.value) {
-            route("/", true); // Redirige al login y reemplaza el historial
-        }
-    }, [authStore.isAuthenticated.value, authStore.isInitializing.value, route]);
+    // 1. Suscripción Atómica: Reacciona inmediatamente cuando las señales mutan
+    useSignalEffect(() => {
+        const isInit = authStore.isInitializing.value;
+        const isAuth = authStore.isAuthenticated.value;
 
-    // 🚀 CAMBIO CLAVE: Bloqueamos la UI solo durante la verificación inicial de la sesión
-    // Mantenemos el spinner si no está autenticado para evitar que vea el Dashboard 
-    // durante el milisegundo en que el useEffect lo expulsa hacia el Login.
-    if (authStore.isInitializing.value || !authStore.isAuthenticated.value) {
+        // Si ya terminamos de inicializar y NO hay sesión válida -> Expulsión determinista
+        if (!isInit && !isAuth) {
+            route("/", true);
+        }
+    });
+
+    // 2. Bloqueo Visual: Leer .value aquí suscribe al componente para re-renderizar
+    const isInit = authStore.isInitializing.value;
+    const isAuth = authStore.isAuthenticated.value;
+
+    if (isInit || !isAuth) {
         return (
             <div class="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 animate-pulse">
                 <CircleNotchIcon size={32} class="animate-spin" />
