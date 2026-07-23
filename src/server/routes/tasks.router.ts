@@ -11,41 +11,37 @@ import {
 } from "../validations/task.validation";
 
 export const tasksRouter = new Hono<AppEnv>()
-	// --------------------------------------------------------
-	// 1. GET /api/tasks -> Obtener todas las tareas del usuario
-	// --------------------------------------------------------
-	.get("/", async (c) => {
-		const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
+	// 🛡️ Middleware perimetral: Valida la sesión una sola vez para todo el router de tareas
+	.use("*", async (c, next) => {
+		const auth = getAuth(c.env, c.req.raw);
 		const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
 		if (!session?.user) {
 			return c.json({ success: false, error: "No autorizado" }, 401);
 		}
 
+		// Inyectamos el usuario en el contexto de Hono de forma segura
+		c.set("user", session.user);
+		await next();
+	})
+
+	.get("/", async (c) => {
+		const user = c.get("user");
 		const db = getDb(c.env);
-		const userTasks = await db.select().from(task).where(eq(task.userId, session.user.id));
+		const userTasks = await db.select().from(task).where(eq(task.userId, user.id));
 
 		return c.json({ success: true, data: userTasks });
 	})
 
-	// --------------------------------------------------------
-	// 2. POST /api/tasks -> Crear una nueva tarea
-	// --------------------------------------------------------
 	.post("/", zValidator("json", createTaskValidator), async (c) => {
-		const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
-		const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-		if (!session?.user) {
-			return c.json({ success: false, error: "No autorizado" }, 401);
-		}
-
+		const user = c.get("user");
 		const body = c.req.valid("json");
 		const db = getDb(c.env);
 
 		const [newTask] = await db
 			.insert(task)
 			.values({
-				userId: session.user.id,
+				userId: user.id,
 				title: body.title,
 				deadline: body.deadline ? new Date(body.deadline) : undefined,
 			})
@@ -53,19 +49,13 @@ export const tasksRouter = new Hono<AppEnv>()
 
 		return c.json({ success: true, data: newTask }, 201);
 	})
+
 	.patch(
 		"/:id",
 		zValidator("param", taskIdParamValidator),
 		zValidator("json", updateTaskValidator),
 		async (c) => {
-			const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
-			const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-			if (!session?.user) {
-				return c.json({ success: false, error: "No autorizado" }, 401);
-			}
-
-			// Ya no usamos c.req.param("id"). Usamos el dato validado por Zod.
+			const user = c.get("user");
 			const { id: taskId } = c.req.valid("param");
 			const body = c.req.valid("json");
 			const db = getDb(c.env);
@@ -77,7 +67,7 @@ export const tasksRouter = new Hono<AppEnv>()
 					status: body.status,
 					deadline: body.deadline ? new Date(body.deadline) : undefined,
 				})
-				.where(and(eq(task.id, taskId), eq(task.userId, session.user.id)))
+				.where(and(eq(task.id, taskId), eq(task.userId, user.id)))
 				.returning();
 
 			if (!updatedTask) {
@@ -88,24 +78,14 @@ export const tasksRouter = new Hono<AppEnv>()
 		},
 	)
 
-	// --------------------------------------------------------
-	// 4. DELETE /api/tasks/:id -> Eliminar tarea
-	// --------------------------------------------------------
 	.delete("/:id", zValidator("param", taskIdParamValidator), async (c) => {
-		const auth = getAuth(c.env, c.req.url, c.req.header("Origin"));
-		const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-		if (!session?.user) {
-			return c.json({ success: false, error: "No autorizado" }, 401);
-		}
-
-		// Extracción segura del ID
+		const user = c.get("user");
 		const { id: taskId } = c.req.valid("param");
 		const db = getDb(c.env);
 
 		const [deletedTask] = await db
 			.delete(task)
-			.where(and(eq(task.id, taskId), eq(task.userId, session.user.id)))
+			.where(and(eq(task.id, taskId), eq(task.userId, user.id)))
 			.returning();
 
 		if (!deletedTask) {
