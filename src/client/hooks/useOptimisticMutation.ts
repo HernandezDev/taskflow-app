@@ -1,4 +1,5 @@
-import { useSignal, useSignalEffect } from "@preact/signals";
+import { useSignal } from "@preact/signals";
+import { useEffect } from "preact/hooks"; // Dependencia corregida
 
 export function useOptimisticMutation<T>(
 	initialValue: T,
@@ -8,19 +9,16 @@ export function useOptimisticMutation<T>(
 	const isSaving = useSignal(false);
 	const errorMsg = useSignal<string | null>(null);
 
-	// Hidratación Top-Down
-	useSignalEffect(() => {
+	// Hidratación determinista acoplada al ciclo de vida del VDOM
+	useEffect(() => {
 		localValue.value = initialValue;
-	});
+	}, [initialValue]); // Ahora el motor vigila cambios en la variable estática
 
-	// Vía de escape para Inputs Continuos (tipeo en Editable)
 	const updateLocalOnly = (newValue: T) => {
 		localValue.value = newValue;
 	};
 
-	// Vía de ejecución para red (Enter en Editable o Clic en Radio)
 	const commitChange = async (newValue: T) => {
-		// Validación contra el valor consolidado (initialValue), no el efímero
 		if (newValue === initialValue) return;
 
 		localValue.value = newValue;
@@ -30,7 +28,6 @@ export function useOptimisticMutation<T>(
 		const success = await mutationFn(newValue);
 
 		if (!success) {
-			// Rollback determinista al estado inicial validado
 			localValue.value = initialValue;
 			errorMsg.value = "Error de red. Cambios revertidos.";
 		}
