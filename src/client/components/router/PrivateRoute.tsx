@@ -14,16 +14,18 @@ export interface RouteWrapperProps {
 
 export function PrivateRoute({ component: Component, ...rest }: RouteWrapperProps) {
     const { route } = useLocation();
+    
+    // Suscripción síncrona
+    const isAuth = authStore.isAuthenticated.value;
 
-    // 1. Suscripción Atómica Pura (Seguridad post-hidratación)
-    // Cuando este componente nace, isInitializing YA ES FALSE gracias al Escudo Raíz.
     useSignalEffect(() => {
-        // Si en cualquier momento el usuario pierde la sesión, lo expulsamos.
         if (!authStore.isAuthenticated.value) {
             route("/", true);
         }
     });
 
-    // 2. Renderizado Transparente: Cero escudos, cero lógica de negocio.
+    // COMPUERTA SÍNCRONA: Si es un intruso, no inyectes el Dashboard. 
+    if (!isAuth) return null;
+
     return <Component {...rest} />;
 }
