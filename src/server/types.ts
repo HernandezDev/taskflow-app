@@ -1,5 +1,8 @@
 import type { D1Database, Fetcher } from "@cloudflare/workers-types";
 import type { Session, User } from "better-auth";
+import type { DrizzleD1Database } from "drizzle-orm/d1";
+import type { AuthType } from "./auth";
+import type * as schema from "./db";
 
 export type Bindings = {
 	DB: D1Database;
@@ -12,7 +15,10 @@ export type Bindings = {
 export type AppEnv = {
 	Bindings: Bindings;
 	Variables: {
-		user: User;
-		session: Session;
+		user: User | null;
+		session: Session | null;
+		db?: DrizzleD1Database<typeof schema>;
+		auth?: AuthType;
 	};
 };
+// borrar "?"  cuando se tenga la implementación completa del midelware
