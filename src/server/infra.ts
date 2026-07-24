@@ -1,10 +1,12 @@
+import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { drizzle } from "drizzle-orm/d1";
 import type { AuthType } from "./auth";
 import { createAuth } from "./auth";
 import * as schema from "./db";
 import type { Bindings } from "./types";
 
-let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+// 🛡️ Tipado explícito inyectando el esquema local
+let _db: DrizzleD1Database<typeof schema> | null = null;
 let _auth: AuthType | null = null;
 
 export const getDb = (env: Bindings) => {
