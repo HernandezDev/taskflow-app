@@ -1,103 +1,157 @@
-```txt
-npm install
-npm run dev
-```
+# TaskFlow
 
-```txt
-npm run deploy
-```
+> ⚠️ **Placeholder de nombre:** el `package.json` todavía dice `hono-spa-spike`. Usé "TaskFlow" acá porque aparece como prefijo en el `localStorage` (`taskflow_offline_tasks`). Cambialo por el nombre final antes de publicar, y actualizá el campo `name` en `package.json` para que coincida.
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+Gestor de tareas simple con estados, deadlines y detección automática de tareas atrasadas. Full-stack, corriendo 100% en el edge de Cloudflare.
 
-```txt
-npm run cf-typegen
-```
-
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
-## 📌 Requerimientos Funcionales y Reglas de Negocio
-
-El sistema gestiona el ciclo de vida de las tareas de forma asíncrona en el Edge bajo las siguientes especificaciones:
-
-### 1. Modelo de Estados y Transiciones
-* **Estados Estrictos:** Una tarea solo puede residir en dos estados mutables: `PENDING` o `COMPLETED`.
-* **Alternancia Atómica (Toggle):** La transición entre estados se ejecuta con un solo clic. Durante el tránsito de la petición de red (`PATCH /api/tasks/:id/toggle`), el componente visual específico debe deshabilitar sus controles locales para bloquear mutaciones concurrentes, manteniendo el resto de la interfaz interactiva.
-
-### 2. Formulario de Creación (Escritura Restringida)
-* **Validación de Campos:** 
-  * `title`: Cadena de texto obligatoria. Se debe aplicar sanitización elemental (*trim*) en el cliente y servidor. Longitudes vacías o compuestas únicamente por espacios en blanco deben ser rechazadas en tiempo de validación de esquema (Zod). Max: 100 caracteres.
-  * `deadline`: Fecha y hora opcional (`<input type="datetime-local">`).
-* **Estado de Carga Inmediato (Optimistic Blocking):** Al procesar el envío, un selector reactivo global (`isLoading`) mutará a `true`, deshabilitando el formulario completo (inputs y botones) en el DOM real para mitigar el riesgo de duplicación de registros por doble sumisión (*double-submit*).
-
-### 3. Lógica Criterio de Vencimiento (Overdue)
-* **Cálculo Dinámico Derivado:** Una tarea se evalúa como **Atrasada (Overdue)** en tiempo de ejecución si cumple concurrentemente:
-  $$\text{Estado} == \text{"PENDING"} \quad \land \quad \text{deadline} \neq \text{null} \quad \land \quad \text{deadline} < \text{Date.now()}$$
-* **Comportamiento en la Interfaz:** Los componentes que cumplan esta condición deben inyectar clases semánticas de TailwindCSS v4 para alertar visualmente al usuario, recalculándose sin necesidad de recargar el navegador a través del grafo de señales.
+<!-- ⚠️ PLACEHOLDER: agregá acá un GIF o 2-3 screenshots del flujo principal (crear tarea → cambiar estado → ver overdue). Es lo primero que un reclutador mira. -->
+<!-- ⚠️ PLACEHOLDER: agregá el link de demo en vivo si tenés uno deployado: **[Ver demo →](https://tu-deploy.pages.dev)** -->
 
 ---
 
-## 📐 Arquitectura de Flujo de Datos y Tipado E2E
+## Por qué este proyecto
 
-El siguiente diagrama detalla la separación física de dominios, el flujo unidireccional de datos en el *runtime* y el canal de inferencia estática de tipos en tiempo de compilación:
+Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de tareas), pero usado como excusa para practicar en profundidad un stack moderno de punta a punta: tipado end-to-end entre cliente y servidor, estado reactivo que evita el diffing del Virtual DOM en las mutaciones de valor, autenticación real, y despliegue serverless en el edge.
+
+## Features
+
+- **Tres estados por tarea:** `PENDING` → `IN_PROGRESS` → `COMPLETED`, con cambio de estado en un clic.
+- **Deadline opcional** por tarea, con detección automática de tareas **atrasadas** (overdue): una tarea se marca como atrasada si no está completada y su deadline ya pasó — el cálculo es reactivo, se recalcula solo en la UI sin recargar la página.
+- **Edición inline** de campos (título, deadline) con patrón *optimistic update*: el cambio se refleja al instante en la UI y se revierte automáticamente si la petición al servidor falla.
+- **Persistencia offline básica** en `localStorage` como caché de lectura mientras se resuelve la sincronización con el servidor.
+- **Autenticación** con sesión persistente (login / registro / logout) vía Better Auth.
+- **PWA instalable**, con service worker generado por Workbox.
+
+## Stack técnico y por qué lo elegí
+
+| Capa | Tecnología | Por qué |
+|---|---|---|
+| Runtime / Deploy | **Cloudflare Workers + Pages** | Edge-first: latencia baja global, cold-start mínimo, sin servidor que mantener. |
+| Framework backend | **Hono** | Liviano, pensado para runtimes edge, con RPC tipado nativo hacia el cliente. |
+| Base de datos | **Cloudflare D1** (SQLite) + **Drizzle ORM** | D1 vive en el mismo borde que el Worker; Drizzle da tipado fuerte sobre SQL sin la sobrecarga de un ORM más pesado. |
+| Frontend | **Preact** | Misma API que React con un bundle mucho más chico — importante para un SPA que se sirve desde el edge. |
+| Estado | **@preact/signals** | Reactividad granular: las mutaciones de valor actualizan el DOM directamente y evitan el ciclo de diffing/reconciliación del Virtual DOM (que Preact sí tiene y usa para el resto del árbol). |
+| Routing | **preact-iso** | Router pensado específicamente para el ecosistema Preact/edge. |
+| Auth | **Better Auth** | Evita reinventar manejo de sesiones/tokens a mano; cliente tipado propio, separado del RPC de dominio. |
+| Validación | **Zod** (vía `@hono/zod-validator`) | Contrato de entrada validado en runtime, con inferencia de tipos hacia el cliente. |
+| Estilos | **TailwindCSS v4** (CSS-first, Lightning CSS) | Configuración sin archivo JS, motor nativo más rápido. |
+| Lint/format | **Biome** | Reemplaza ESLint + Prettier con una sola herramienta más rápida. |
+
+## Arquitectura
 
 ```mermaid
 graph TD
-    subgraph Browser["Navegador (Entorno Cliente)"]
+    subgraph Browser["Navegador (Cliente)"]
         direction TB
-        UI["Preact Components (TSX)<br/><i>Renderizado sin VDOM</i>"]
-        MVVM["ViewModel (createModel)<br/><i>State: Signals Grafo</i>"]
-        RPC["Hono RPC Client<br/><i>Fetch + AbortSignal</i>"]
-        
-        UI -->|Dispara Eventos / Lee Signals| MVVM
-        MVVM -->|Mutaciones directas al DOM| UI
-        MVVM -->|Invoca Métodos Tipados| RPC
+        UI["Componentes Preact (TSX)<br/><i>Signals evitan diffing en mutaciones de valor</i>"]
+        State["Stores / Modelos<br/><i>@preact/signals</i>"]
+        RPC["Cliente RPC de Hono<br/><i>fetch tipado + AbortSignal</i>"]
+        AuthC["Cliente Better Auth<br/><i>cookies de sesión</i>"]
+
+        UI -->|Lee signals / dispara acciones| State
+        State -->|Actualiza DOM vía signals| UI
+        State -->|Llama métodos tipados| RPC
+        State -->|Login / registro / logout| AuthC
     end
 
-    subgraph Edge["Cloudflare Infrastructure (Servidor)"]
+    subgraph Edge["Cloudflare (Servidor)"]
         direction TB
-        API["Hono API Router<br/><i>Validador: Zod Eschema</i>"]
-        ORM["Drizzle ORM<br/><i>SQL Abstracción</i>"]
-        D1[("Cloudflare D1<br/><i>SQLite en el Edge</i>")]
-        
-        API -->|Ejecuta Queries| ORM
-        ORM -->|Transacciona| D1
-        D1 -->|Auto-generación: createdAt| ORM
+        API["Router Hono<br/><i>Validación: Zod</i>"]
+        Auth["Better Auth<br/><i>manejo de sesión</i>"]
+        ORM["Drizzle ORM"]
+        D1[("Cloudflare D1 (SQLite)")]
+
+        API -->|Queries| ORM
+        ORM -->|Transacciones| D1
+        Auth -->|Persiste sesión/usuario| D1
     end
 
-    %% Canales de Comunicación e Inferencia
-    RPC ===>|Peticiones HTTP REST / JSON| API
-    API -.->|Inferencia Estática: Export AppType| RPC
+    RPC ===>|HTTP / JSON, credentials: include| API
+    AuthC ===>|HTTP / cookies| Auth
+    API -.->|Tipos inferidos: AppType| RPC
+    Auth -.->|Tipos inferidos: AuthType| AuthC
 
     classDef client fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
     classDef server fill:#efebe9,stroke:#5d4037,stroke-width:2px;
     classDef database fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    
-    class UI,MVVM,RPC client;
-    class API,ORM server;
+    class UI,State,RPC,AuthC client;
+    class API,Auth,ORM server;
     class D1 database;
- ```
----
+```
 
-## Ecosistema de Gestión de Estado y Red
+**Flujo de datos:**
+1. Los componentes leen estado de **stores** (globales, ej. sesión) o **modelos** (locales al componente) construidos sobre `@preact/signals`.
+2. Las mutaciones de dominio (tareas) pasan por el cliente RPC de Hono (`src/client/lib/api.ts`), tipado a partir de `AppType`, inferido directamente del router del servidor — sin generar ni mantener tipos a mano.
+3. Las operaciones de identidad (login, registro, sesión) pasan por un canal separado: el cliente de Better Auth (`src/client/lib/auth-client.ts`), tipado a partir de `AuthType`, inferido del lado del servidor de Better Auth. Es una segunda inferencia de tipos independiente de `AppType`, no una extensión de ella.
+4. El servidor valida cada payload del canal RPC con Zod antes de tocar la base, y usa Drizzle para las queries a D1. Better Auth persiste sesión y usuario también en D1, pero por su propio camino.
+5. Ambos canales comparten la sesión vía **cookies httpOnly**: el cliente RPC fuerza `credentials: "include"` en cada request para que el navegador las adjunte.
 
-| Herramienta | Caso de Uso Ideal | Nivel de Lógica | ¿Dónde vive la instancia? |
-| :--- | :--- | :--- | :--- |
-| **`useRpcQuery`** | Mostrar un dato simple (ej. un dropdown, un widget estático). | Nula (Solo lectura). | Ciclo de vida del Componente (Efímero). |
-| **`useModel`** | Una pantalla interactiva completa (ej. Tablero, Formulario complejo). | Alta (Reglas de negocio, Mutaciones, Cálculos). | Ciclo de vida del Componente (Efímero). |
-| **Store Global** | Datos que viajan con el usuario por toda la app (ej. Sesión, Tema). | Alta (Negocio Global, Sincronización en segundo plano). | Exportado en un Archivo (Singleton / Memoria persistente). |
+Para el modelo de datos completo, ver [`docs/ERD.md`](./docs/ERD.md) (generado automáticamente desde el schema de Drizzle).
 
+## Estructura del proyecto
 
-### La "Piedra Rosetta" del Estado Frontend (Moderno)
+```
+src/
+├── client/
+│   ├── components/
+│   │   ├── router/       # Guards de autenticación (PrivateRoute, GuestRoute)
+│   │   ├── tasks/         # Componentes específicos del dominio de tareas
+│   │   └── ui/            # Componentes de UI reutilizables
+│   ├── hooks/              # Hooks utilitarios (mutación optimista, prefetch, etc.)
+│   ├── lib/                 # Cliente RPC, cliente de auth, factories de modelos
+│   ├── pages/               # Vistas mapeadas a rutas
+│   ├── stores/               # Estado global (singleton), ej. sesión y tareas
+│   └── style.css
+└── server/
+    ├── auth/                 # Configuración de Better Auth
+    ├── db/                    # Schemas de Drizzle
+    ├── routes/                 # Endpoints de Hono
+    └── validations/             # Schemas de Zod
+```
 
-| Nivel de Escala | Taskflow (Tu Arquitectura) | Next.js (App Router) | SvelteKit (Svelte 5) |
-| :--- | :--- | :--- | :--- |
-| **1. Destornillador** (Lectura Simple) | `useRpcQuery` | Server Components (`fetch`) / SWR | Funciones `load` (`+page.ts`) y lecturas con `$props()` |
-| **2. Sala de Control** (ViewModel Efímero) | `createRpcModel` + `useModel` | Custom Hooks + *Server Actions* | Clases o funciones con `$state` instanciadas localmente |
-| **3. La Bóveda** (Estado Global) | Singleton Store exportado | *Zustand* / Context API | Archivo `.ts` exportando un `$state` global (Singleton) |
+## Notas de build
+
+El proyecto compila a un único deploy de Cloudflare Pages a partir de **dos pasadas de Vite** sobre el mismo `vite.config.ts`: una en modo `client` (genera el SPA en `dist/`) y otra en modo `server` (empaqueta el backend de Hono como `dist/_worker.js` vía `@hono/vite-build/cloudflare-pages`). El script `build` las ejecuta en ese orden. En desarrollo, `@hono/vite-dev-server` sirve ambos desde el mismo proceso, enrutando todo lo que no empiece con `/api` como ruta del SPA.
+
+## Correr el proyecto localmente
+
+```bash
+pnpm install
+pnpm run dev
+```
+
+Aplicar migraciones de base de datos:
+
+```bash
+pnpm run db:migrate:local
+```
+
+Generar el diagrama de entidad-relación en `docs/ERD.md`:
+
+```bash
+pnpm run docs:erd
+```
+
+Desplegar a Cloudflare Pages:
+
+```bash
+pnpm run deploy
+```
+
+### Nota sobre tipos de Cloudflare
+
+El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangler types`), pero **no se usa** — la decisión fue quedarse con el paquete estático `@cloudflare/workers-types` (fijado como `^4.20260619.1`) en vez de generar tipos por proyecto. Cloudflare recomienda migrar a la generación vía Wrangler, pero el esquema de versionado `4.YYYYMMDD.patch` de esta major ancla los tipos a un snapshot de fecha concreto de `workerd` — el mismo beneficio de precisión que da `wrangler types`, sin el paso extra de regenerarlos. Ojo: la v5 del paquete (julio 2026) eliminó ese anclaje por fecha, así que una actualización a mano más allá de la v4 cambiaría este trade-off.
+
+## Roadmap
+
+<!-- ⚠️ PLACEHOLDER: completá con lo que realmente tenés pensado. Ejemplos: -->
+- [ ] Tests unitarios y de integración
+- [ ] Filtros y ordenamiento de tareas (por estado, deadline)
+- [ ] Notificaciones de tareas próximas a vencer
+
+## Licencia
+
+<!-- ⚠️ PLACEHOLDER: elegí una licencia (MIT es lo más común para portafolio) o quitá esta sección -->
 
 # Referencia de Códigos de Error - Better Auth
 
@@ -164,94 +218,3 @@ graph TD
 - `BODY_MUST_BE_AN_OBJECT`
 - `CROSS_SITE_NAVIGATION_LOGIN_BLOCKED`
 
-# 📋 Plan de Tareas Pendientes y Roles de la Arquitectura
-🧱 FASE 1: El Backend y el Contrato Maestro
-Tarea 1: Crear los Schemas de Zod (note.schema.ts)
-
-    El Rol de Zod: Gobernar y comunicar la ENTRADA (El Request).
-
-    Su función exacta: Actúa como el guardia de seguridad del servidor. Dicta la estructura obligatoria de lo que el cliente intenta enviar (ej: "el título es un texto obligatorio de máximo 100 caracteres"). Viaja hacia el frontend a través de TypeScript para avisarle a tu editor de código qué datos exactos debe teclear el programador al mandar una petición, bloqueando cualquier dato corrupto en tiempo de ejecución.
-
-Tarea 2: Crear el Controlador de Hono (notes.router.ts)
-
-    El Rol de Hono RPC: Automatizar e inferir la SALIDA (El Response).
-
-    Su función exacta: Ejecutar la lógica en el servidor (guardar en base de datos). Al responder, no usa Zod; en su lugar, TypeScript lee directamente tu código (return c.json(...)) y deduce automáticamente qué forma tiene la respuesta exitosa.
-
-    El Contrato Maestro: Al final, empaqueta la regla de entrada de Zod y la regla de salida de Hono en un único tipo de TypeScript (type NotesRouter). Este tipo se exporta al frontend para documentar toda la autopista de comunicación.
-
-🧠 FASE 2: El Frontend y la Separación de Cerebros
-Tarea 3: Crear el Cerebro Global (notesStore.ts)
-
-    El Rol de este elemento: El Almacén Inmortal (Persistencia en Memoria RAM).
-
-    ¿Por qué es GLOBAL?: Porque su ciclo de vida es infinito mientras la aplicación esté abierta. No le importan los formularios, ni los errores de pantalla, ni los cargadores (loaders). Su único trabajo es guardar la lista pura de notas que bajó del servidor. Al ser global, si el usuario navega del Dashboard a su Perfil y luego regresa, las notas siguen vivas en la RAM. Evitamos destruir los datos y tener que hacer llamadas repetidas (fetch) a Cloudflare Workers, logrando una velocidad instantánea.
-
-Tarea 4: Crear el Cerebro Local (NoteEditorModel.ts)
-
-    El Rol de este elemento: El Trabajador Efímero (Estado de Interacción).
-
-    ¿Por qué está ATADO AL CICLO DE VISTA?: Porque gestiona la basura temporal de la interfaz: el texto que el usuario está escribiendo en el <Editable> en ese instante, el booleano isSaving (para mostrar el spinner de carga), o el mensaje de error si el servidor se cae.
-
-    La mitigación del Estado Zombie: Al estar atado al ciclo de vida del componente, en el momento en que el usuario cierra el editor o cambia de pantalla, este modelo se destruye por completo en la memoria. Si el usuario vuelve a entrar al editor de notas 10 minutos después, el modelo nace completamente de cero, limpio, sin textos a medio borrar ni errores viejos bloqueando la pantalla.
-
-🔄 El Flujo de Cierre (Cómo colaboran)
-
-Cuando el usuario termine de editar en el componente tonto y presione guardar:
-
-    El Modelo Local recopila el texto y lo envía al backend usando el cliente tipado por el Router de Hono.
-
-    Zod valida en el servidor que la entrada sea correcta.
-
-    El servidor guarda la nota y devuelve la respuesta que Hono RPC ya documentó.
-
-    Si la respuesta es exitosa, el Modelo Local toma esa nota nueva y se la entrega al Store Global.
-
-    El Store Global actualiza su array en memoria y, gracias a la reactividad atómica de las Signals, la pantalla se redibuja en milisegundos sin re-renderizar todo el Dashboard.
-
-## Estructura de carpetas de src
-
-./src
-├── client
-│   ├── App.tsx
-│   ├── client.tsx
-│   ├── components
-│   │   ├── router
-│   │   │   ├── GuestRoute.tsx
-│   │   │   └── PrivateRoute.tsx
-│   │   └── ui
-│   │       └── Editable.tsx
-│   ├── hooks
-│   │   ├── usePrefetch.ts
-│   │   ├── useSignupForm.ts
-│   │   └── useTransitionRoute.ts
-│   ├── lib
-│   │   ├── api.ts
-│   │   ├── auth-client.ts
-│   │   ├── createRpcModel.ts
-│   │   ├── traductorAuth.ts
-│   │   └── validarRegistro.ts
-│   ├── models
-│   │   └── hint.model.ts
-│   ├── pages
-│   │   ├── DashboardScreen.tsx
-│   │   ├── LoginScreen.tsx
-│   │   └── SignupScreen.tsx
-│   ├── stores
-│   │   └── authStore.ts
-│   └── style.css
-└── server
-    ├── auth
-    │   ├── cli.ts
-    │   └── index.ts
-    ├── db
-    │   ├── auth.schema.ts
-    │   ├── index.ts
-    │   └── tasks.schema.ts
-    ├── index.ts
-    ├── infra.ts
-    ├── routes
-    │   └── tasks.router.ts
-    ├── types.ts
-    └── validations
-        └── task.validation.ts
