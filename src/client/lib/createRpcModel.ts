@@ -15,24 +15,26 @@ export function createRpcModel<T>(
 ): RpcResource<T> & { [Symbol.dispose]: () => void } {
 	const RpcResourceModel = createModel<RpcResource<T>>(() => {
 		const data = signal<T>(initialData);
-
-		// MODIFICACIÓN CRÍTICA 1: Inicia en false.
-		// Si no hay ejecución automática, el estado inicial es inactivo, no "cargando".
-		const isLoading = signal<boolean>(false);
+		const isLoading = signal<boolean>(true);
 		const error = signal<Error | null>(null);
 
+		// 1. El controlador ahora vive seguro dentro del closure del modelo
 		let controller: AbortController | null = null;
 
+		// 2. REGISTRO DE LIMPIEZA OFICIAL (Regla 3.3 de agents.md)
+		// createModel tomará esta función de retorno y la vinculará al Symbol.dispose
 		effect(() => {
 			return () => {
 				controller?.abort();
 			};
 		});
 
+		// Pasamos a async/await para controlar mejor el flujo
 		const execute = async () => {
 			controller?.abort();
 			controller = new AbortController();
 
+			// Batch inicial: Limpiamos errores y activamos loading de golpe
 			batch(() => {
 				isLoading.value = true;
 				error.value = null;
@@ -41,26 +43,31 @@ export function createRpcModel<T>(
 			try {
 				const res = await fetchFn(controller.signal);
 
+				// Batch de éxito: Actualizamos datos y apagamos loading a la vez
 				batch(() => {
 					data.value = res;
 					isLoading.value = false;
 				});
 			} catch (err: unknown) {
+				// Comprobación Type-Safe para ver si es un AbortError
 				const isAbortError =
 					(err instanceof Error && err.name === "AbortError") ||
 					(err instanceof DOMException && err.name === "AbortError");
 
 				if (!isAbortError) {
+					// Batch de error: Asignamos error y apagamos loading a la vez
 					batch(() => {
 						error.value = err instanceof Error ? err : new Error("RPC Fetch Failed");
 						isLoading.value = false;
 					});
 				}
+				// Nota: Si ES un AbortError, significa que otra petición pisó a esta o el componente se desmontó.
+				// Dejamos isLoading en true porque la nueva petición está en curso (o el componente ya no existe).
 			}
 		};
 
-		// MODIFICACIÓN CRÍTICA 2: Amputación del auto-fetch.
-		// Se elimina la invocación a execute() del cuerpo de la factoría.
+		// Disparo inicial automático
+		execute();
 
 		return {
 			data,
@@ -73,5 +80,7 @@ export function createRpcModel<T>(
 		};
 	});
 
+	// 3. Retornamos la instancia pura.
+	// No hace falta mutarla; el motor ya orquestó el Symbol.dispose internamente.
 	return new RpcResourceModel() as RpcResource<T> & { [Symbol.dispose]: () => void };
 }
