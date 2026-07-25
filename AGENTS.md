@@ -1,107 +1,152 @@
-# Especificación de Arquitectura y Directrices Técnicas (Monorepo Lógico)
+# Guía de Arquitectura — TaskFlow
 
-Este documento centraliza de forma estricta las reglas arquitectónicas, restricciones del entorno, convenciones de tipado y optimizaciones de rendimiento que rigen el proyecto SPA Fullstack Edge. Cualquier desviación de estas pautas compromete la estabilidad, la eficiencia del *cold-start* en Cloudflare Workers/Pages o el rendimiento reactivo del cliente, y será tratada como deuda técnica crítica.
+Este documento describe cómo está construido el proyecto **realmente**, no cómo se planeó originalmente. Está pensado tanto para vos en el futuro como para cualquier agente (IA o humano) que trabaje sobre el código: seguir estas convenciones mantiene el proyecto consistente.
 
----
-
-## 1. Resumen de la Arquitectura
-
-* **Tipo de Aplicación:** Single Page Application (SPA) Fullstack.
-* **Entorno de Despliegue:** Servidor Serverless/Edge distribuido globalmente (**Cloudflare Workers / Pages**).
-* **Orquestador de Build:** Vite (optimizado para producción Edge sin sobrecarga de dependencias *legacy*).
-* **Diseño y Estilos:** **TailwindCSS v4** utilizando configuración *CSS-first* a través del motor nativo Lightning CSS. Queda bloqueado el uso de archivos de configuración basados en JavaScript puro (`tailwind.config.js`) y plugins obsoletos.
+> Nota histórica: una versión anterior de este documento describía un patrón más estricto (prohibición total de hooks nativos fuera de la capa de infraestructura). En la práctica, ese patrón resultó demasiado rígido para casos reales de sincronización UI↔estado, así que la regla se ajustó. Ver sección 2.
 
 ---
 
-## 2. Capa de Frontend (Preact & Reactividad Granular)
+## 1. Resumen de la arquitectura
 
-### 2.1 Ámbitos de Responsabilidad de Hooks (Dominio vs. Infraestructura)
-La validez del uso de hooks nativos de React/Preact (`useState`, `useEffect`, `useReducer`, `useMemo`, `useCallback`) se define estrictamente por su ámbito de ejecución en la arquitectura:
-* **Capa de Dominio y Vistas (Restringido):** Para la construcción de componentes visuales, páginas, flujos de datos y lógica de negocio, su uso está **estrictamente prohibido**. Toda reactividad local, derivación de estado y manejo de efectos secundarios asíncronos debe gestionarse de forma exclusiva mediante el ecosistema `@preact/signals` y `createModel`.
-* **Capa de Infraestructura y Enrutamiento (Permitido):** Los hooks nativos son válidos única y exclusivamente como mecanismos de puente y orquestación arquitectónica. Ejemplos legítimos en el repositorio incluyen:
-  - **Bootstrap Raíz:** `App.tsx` (ej. recuperar la sesión de forma asíncrona al montar la SPA).
-  - **Guards de Autenticación:** `PrivateRoute.tsx` o `GuestRoute.tsx` (ej. usar `useEffect` para interceptar la navegación y redirigir al usuario si la sesión cambia de estado).
-
-### 2.2 Enrutador Oficial (`preact-iso`)
-Se utilizará **`preact-iso`** como enrutador oficial debido a su naturaleza *Edge-first*. Sus hooks nativos (`useLocation`, etc.) están confinados estrictamente a la Capa de Vista (decidir qué componente renderizar basándose en la URL), por lo que cumplen con la separación de responsabilidades.
+- **Tipo:** Single Page Application (SPA) full-stack.
+- **Deploy:** Cloudflare Workers / Pages (edge).
+- **Build:** Vite.
+- **Estilos:** TailwindCSS v4, configuración CSS-first (Lightning CSS). No usar `tailwind.config.js`.
+- **Lint/format:** Biome.
 
 ---
 
-## 3. Especificación Técnica de Signals (`@preact/signals`)
+## 2. Frontend (Preact + `@preact/signals`)
 
-El motor reactivo aísla estrictamente la lógica de la UI apoyándose en las APIs oficiales de la librería.
+### 2.1 Regla general de estado
 
-### 3.1 Patrón Explícito de Encapsulamiento (`ReadonlySignal`)
-Para prevenir mutaciones accidentales desde la UI, se instaura el patrón de **Flujo de Datos Unidireccional Estricto** apoyado en TypeScript:
-* Todo modelo debe definir una `interface` explícita donde el estado expuesto a la vista esté tipado estrictamente como `ReadonlySignal`.
-* Las variables `signal` internas son privadas; solo se devuelven bajo la firma de la interfaz.
-* **Regla de Oro:** Los componentes JSX **solo pueden leer** Signals. Cualquier mutación debe realizarse ejecutando las acciones/métodos definidos en la interfaz del Modelo/Store.
+Todo el estado — global o local a un componente — se maneja con `@preact/signals` / `@preact/signals-core`. No usar `useState`/`useReducer` para modelar estado de dominio.
 
-### 3.2 Unificación Arquitectónica (`createModel` y `useModel`)
-Toda agrupación de estado y lógica de negocio se genera utilizando la función oficial **`createModel`** de `@preact/signals`. La arquitectura divide su uso en dos conceptos físicos:
+Existen tres niveles, según el alcance del dato:
 
-#### A. Stores (Estado Global / Singleton)
-* **Definición:** Instancias únicas que sobreviven a la navegación.
-* **Casos de Uso:** Sesión del usuario (`authStore`), caché global, preferencias de UI.
-* **Instanciación:** Se exporta una única instancia generada con `new` directamente en el archivo `.ts`.
+| Nivel | Herramienta | Cuándo usarlo | Ejemplo en el proyecto |
+|---|---|---|---|
+| Global (singleton) | Objeto literal con signals privadas + interfaz pública `ReadonlySignal` | Datos que persisten mientras la app esté abierta: sesión, lista de tareas | `authStore.ts`, `tasksStore.ts` |
+| Modelo de datos remotos | `createModel` (vía la factory propia `createRpcModel`) | Envolver un fetch con estado de carga/error, reusable en distintos stores | `lib/createRpcModel.ts`, usado por `tasksStore` |
+| Efímero atado a un componente | `useModel` | Estado de interacción local que debe destruirse al desmontar (formularios complejos, paginación local) | **Todavía sin uso** — la app no tiene pantallas con ese nivel de complejidad. No evitar `useModel` por sistema si aparece un caso real; es una herramienta válida y disponible en `@preact/signals`. |
 
-#### B. Modelos (Estado Efímero / Orientado a Componente)
-* **Definición:** Lógica transitoria atada estrictamente al ciclo de vida de un componente (ej. estado de un formulario, paginación local).
-* **Instanciación Estática:** Usar `const model = useModel(MyModel)` para modelos sin argumentos.
-* **Instanciación Dinámica (Con Props):** Obligatorio usar fábrica: `const model = useModel(() => new MyModel(props.id))`.
-* **Ciclo de Vida Automático:** El hook oficial `useModel` se encarga de crear la instancia en el primer renderizado, memorizarla y ejecutar su disposición al desmontar el componente.
+`createRpcModel` es un wrapper propio sobre `createModel` que resuelve el patrón "fetch + `isLoading` + `error` + `AbortController`" de forma reutilizable. Es el patrón a seguir para cualquier store que consuma datos del servidor.
 
-### 3.3 Limpieza y Disposición Personalizada (*Custom Dispose*)
-Si un modelo maneja recursos fuera del motor de signals (conexiones, temporizadores, o controladores `AbortController` de red), es **obligatorio** registrar su limpieza dentro de `createModel` usando un efecto sin dependencias que retorne la función de limpieza:
-```typescript
-const DataModel = createModel(() => {
-  const abortController = new AbortController();
-  effect(() => {
-    return () => abortController.abort(); // Ejecutado vía Symbol.dispose
-  });
-  return { ... };
+### 2.2 Hooks nativos de Preact — cuándo sí
+
+La regla original prohibía hooks nativos (`useEffect`, etc.) fuera de infraestructura (bootstrap, guards de ruta). En la práctica esto no cubre un caso legítimo: **sincronizar un signal local con una prop que cambia por fuera del componente** (ej. edición optimista de un campo cuyo valor real puede llegar actualizado desde el servidor).
+
+Regla actualizada:
+
+- **Preferir signals puros** para toda la lógica de estado y derivaciones (`computed`).
+- **`useEffect` está permitido** cuando el objetivo es sincronizar estado interno con el ciclo de vida del componente o con props externas — no como reemplazo general de `computed`/`effect` de signals.
+- Patrón de referencia: `hooks/useOptimisticMutation.ts`. Envuelve un signal local (`localValue`), lo hidrata con `useEffect` cuando cambia el valor inicial recibido por props, y expone `commitChange` con rollback automático si la mutación al servidor falla. Usar este hook (o este patrón) para cualquier campo editable inline con optimistic update.
+- Los guards de ruta (`PrivateRoute`, `GuestRoute`) y el bootstrap raíz (`App.tsx`) siguen siendo los casos de infraestructura donde `useEffect` es la herramienta esperada.
+
+### 2.3 Enrutador (`preact-iso`)
+
+Router oficial del proyecto. Sus hooks (`useLocation`, etc.) están confinados a la capa de vista (decidir qué renderizar según la URL).
+
+### 2.4 Reglas de Signals
+
+- **Encapsulamiento:** todo estado expuesto a la UI se tipa como `ReadonlySignal` en una interfaz explícita. Las signals internas son privadas al módulo/modelo; la única forma de mutarlas desde afuera es a través de los métodos expuestos.
+- **Lectura en JSX:** pasar la signal directamente (`<p>{count}</p>`, `value={inputValue}`), no `.value` — así la mutación actualiza el nodo del DOM real directamente y evita pasar por el ciclo de diffing/reconciliación del Virtual DOM de Preact para ese valor puntual.
+- **Batching:** agrupar mutaciones relacionadas con `batch(() => { ... })` (ver `authStore.checkSession`, `createRpcModel.execute`).
+- **Limpieza de recursos:** si un modelo maneja un `AbortController` u otro recurso externo, registrar su limpieza en un `effect` sin dependencias que retorne la función de cleanup (ver `createRpcModel`).
+
+---
+
+## 3. Build (Vite — doble pasada)
+
+`vite.config.ts` es la pieza que amarra todo el proyecto a un único deploy en Cloudflare Pages. No es una config estándar de SPA: usa el `mode` de Vite para producir **dos builds distintos a partir del mismo comando**:
+
+| `mode` | Qué construye | Plugin clave | Salida |
+|---|---|---|---|
+| `client` (default) | Frontend SPA (Preact, Tailwind, PWA) | `@preact/preset-vite`, `@tailwindcss/vite`, `VitePWA` | `dist/` |
+| `server` | Backend Hono empaquetado para Pages Functions | `@hono/vite-build/cloudflare-pages` | `dist/_worker.js` |
+
+El script `build` en `package.json` (`vite build && vite build --mode server`) ejecuta ambas pasadas en secuencia. La build de servidor usa `emptyOutDir: false` a propósito, para no borrar lo que ya generó la pasada de cliente. **Si se agrega un nuevo script de build o CI, respetar este orden** (cliente primero, servidor después) o se pierde el output del frontend.
+
+### 3.1 Dev server
+
+En desarrollo, `@hono/vite-dev-server` (con el adapter de Cloudflare) monta el backend de Hono (`src/server/index.ts`) dentro del mismo proceso de Vite. La opción `exclude` en `devServer` es la que define el ruteo local:
+
+- Excluye explícitamente `/`, `/index.html`, `/src/**`, assets de Vite y `node_modules` — esas rutas las resuelve Vite como SPA normal.
+- El patrón `/^\/(?!api).*/` es la regla clave: **cualquier ruta que no empiece con `/api` se trata como ruta del SPA**, no como endpoint del backend. Si se agrega un nuevo prefijo de API que no sea `/api`, hay que ajustar este patrón o el dev server no lo va a enrutar correctamente.
+
+`injectClientScript: true` inyecta el script de HMR de Vite en las respuestas servidas por Hono durante desarrollo.
+
+---
+
+## 4. Backend (Hono + Cloudflare D1)
+
+- **Framework:** Hono.
+- **Base de datos:** Cloudflare D1 (SQLite), vía Drizzle ORM.
+- **Rutas:** encadenadas (`.get().post().patch()...`) para poder exportar un tipo unificado (`AppType`) que el cliente RPC consume.
+- La inicialización de la conexión a D1 se mantiene separada de la configuración de Better Auth.
+
+---
+
+## 5. Comunicación cliente-servidor
+
+Hay **dos canales separados**, cada uno con su propio cliente. No mezclar responsabilidades entre ellos.
+
+### 5.1 Canal de dominio: RPC tipado de Hono (`lib/api.ts`)
+
+```ts
+export const rpc = hc<AppType>("/", {
+    fetch: (input, requestInit) =>
+        fetch(input, { ...requestInit, credentials: "include" }),
 });
 ```
 
-### 3.4 Bypass del Virtual DOM
-* **Nodos de Texto:** Prohibido acceder a `.value` en el renderizado JSX. Pasa la referencia directa (`<p>{count}</p>`).
-* **Atributos:** Pasa los signals a propiedades HTML (`value={inputValue}`) para mutaciones atómicas sin *diffing*.
+- El tipo `AppType` se importa directo del router del servidor (`@server/index`) — el alias `@server` apunta a `src/server`. Esto es lo que da el tipado end-to-end sin generar nada a mano: si cambia una ruta en el backend, TypeScript marca error en el cliente al instante.
+- El `fetch` custom fuerza `credentials: "include"` en **todas** las peticiones RPC. Esto es necesario porque la sesión de Better Auth viaja por cookie — sin este flag, el navegador no manda la cookie de sesión en las requests al backend y los endpoints protegidos fallan con 401 aunque el usuario esté logueado.
+- Todo endpoint que reciba body debe validarse con Zod (`@hono/zod-validator`) en el servidor, fail-fast.
+
+### 5.2 Canal de autenticación: cliente de Better Auth (`lib/auth-client.ts`)
+
+```ts
+export const authClient = createAuthClient({
+    plugins: [inferAdditionalFields<AuthType>()],
+});
+```
+
+- No pasa por el RPC de dominio — es un cliente separado, generado por Better Auth.
+- `AuthType` también se importa desde el servidor (`@server/auth`), y el plugin `inferAdditionalFields` es lo que le da al cliente conocimiento de tipos de campos custom que se hayan agregado al modelo de usuario/sesión en el servidor (más allá de los campos base de Better Auth). Si se agrega un campo custom al usuario en el backend, este plugin es lo que lo propaga al tipado del cliente — no hay que declararlo dos veces.
+- Maneja login, registro, logout y recuperación de sesión; internamente también depende de la cookie de sesión, coherente con el `credentials: "include"` del canal RPC.
+
+### 5.3 Peticiones asíncronas
+
+Todo fetch (de cualquiera de los dos canales) se encapsula en un modelo (store o `createRpcModel`), con `AbortController` propio, cancelado en la limpieza del `effect` correspondiente.
 
 ---
 
-## 4. Capa de Backend (Hono) y Base de Datos (Cloudflare D1)
+## 6. TypeScript
 
-* **Framework:** **Hono**, configurado con patrón *Lazy-Singleton* para inicialización diferida orientada a mitigar el *Cold Start*.
-* **Base de Datos:** **Cloudflare D1** (SQLite distribuido).
-* **ORM:** **Drizzle ORM**. Las consultas deben optimizarse mediante *prepared statements*. La inicialización de la conexión a D1 debe mantenerse separada de la infraestructura de Autenticación.
-* **Patrón de Rutas:** Uso mandatorio de rutas encadenadas para exportar un tipo estricto unificado (`AppType`). 
-
----
-
-## 5. Comunicación E2E, Red y Autenticación
-
-### 5.1 Tipado de Red de Dominio (Zod + Hono RPC)
-* El frontend consume la **API de Dominio** (CRUD de negocio, operaciones de la DB) exclusivamente a través del cliente tipado `hc<AppType>`.
-* **Contrato de Datos (Zod):** Todo endpoint que reciba *payloads* debe validar la entrada síncronamente con Zod (`@hono/zod-validator`) bajo una política *Fail-Fast*.
-
-### 5.2 Excepción de Autenticación (Better Auth)
-Las peticiones relacionadas a la identidad del usuario (login, registro, recuperación de sesión) **no pasan** por Hono RPC. Estas son gestionadas exclusivamente de forma directa a través del cliente agnóstico generado por Better Auth (`src/client/lib/auth-client.ts`), el cual mantiene su propio contrato estricto de tipos con la configuración del servidor.
-
-### 5.3 Control estricto de Peticiones Asíncronas
-* Toda petición de red (**fetching**) se encapsulará directamente dentro de los métodos de un Modelo (`createModel`). 
-* Es imperativo usar un `AbortController` local, limpiado vía efecto de disposición, para cancelar peticiones en vuelo y mitigar fugas de memoria al desmontar componentes de la vista.
+- Project references: `tsconfig.client.json` y `tsconfig.server.json`.
+- `verbatimModuleSyntax` habilitado → usar `import type` para tipos que cruzan la frontera cliente/servidor.
+- Alias `@server` disponible desde el cliente para importar tipos del servidor (`AppType`, `AuthType`) sin rutas relativas largas.
+- **Tipos de Cloudflare:** el proyecto usa el paquete estático `@cloudflare/workers-types` (fijado en `package.json` como `^4.20260619.1`), no la generación por proyecto (`wrangler types` / script `cf-typegen`). Es una decisión deliberada: evita tener que regenerar tipos cada vez que cambian los bindings. Cloudflare recomienda migrar a la generación vía Wrangler, pero el paquete sigue actualizándose con versiones nuevas periódicamente, así que no hay urgencia.
+  - **Detalle de versión importante:** el esquema `4.YYYYMMDD.patch` de la v4 ancla los tipos a un snapshot de fecha concreto de `workerd` (en este caso, 19/06/2026) — el mismo beneficio de precisión que da `wrangler types`, sin tener que generarlo. El rango `^4.20260619.1` en `package.json` evita saltar a mayor solo con `pnpm update`.
+  - **Cuidado al actualizar a mano:** desde julio 2026 existe `@cloudflare/workers-types` v5, que simplificó el paquete a solo dos entrypoints (`workers-types` y `workers-types/experimental`) y **eliminó el anclaje por fecha** — con v5 siempre se obtienen los tipos de la compat date más reciente que soporte esa versión del paquete, no una fecha específica. Si en algún momento se corre `pnpm add -D @cloudflare/workers-types@latest` a mano, se pierde ese anclaje. No actualizar a v5 sin evaluar el impacto, o migrar a `wrangler types` en ese momento.
 
 ---
 
-## 6. Configuración de TypeScript y Organización Feature-Lite
+## 7. Modelo de dominio: tareas
 
-### 6.1 Restricciones de TypeScript
-* **Project References:** Orquestador raíz con `tsconfig.client.json` y `tsconfig.server.json`.
-* **Sintaxis de Módulos:** `verbatimModuleSyntax` habilitado. Es obligatorio usar `import type` para cruzar fronteras frontend/backend.
+- **Estados:** `PENDING` → `IN_PROGRESS` → `COMPLETED`.
+- **Deadline:** opcional, `datetime-local`.
+- **Overdue (derivado, no persistido):** una tarea es atrasada si `status !== "COMPLETED"` y `deadline` está definido y es anterior a `Date.now()`. Se calcula en el cliente, reactivamente, vía `computed`.
 
-### 6.2 Organización de Archivos
-* `src/client/lib/` -> Configuración de red (Hono RPC, cliente de Better Auth) y utilidades base.
-* `src/client/stores/` -> Singletons exportados globales (ej. `authStore.ts`).
-* `src/client/models/` -> Clases generadas con `createModel` e Interfaces de TypeScript (`ReadonlySignal`).
-* `src/client/pages/` -> Vistas mapeadas a rutas de `preact-iso`.
-* `src/client/components/` -> Componentes puros (`UI`) e Infraestructura (`Router`).
+---
+
+## 8. Organización de archivos
+
+```
+src/client/lib/        → cliente RPC, cliente de auth, factories de modelos (createRpcModel)
+src/client/stores/      → singletons globales (authStore, tasksStore)
+src/client/hooks/        → hooks utilitarios reusables (useOptimisticMutation, usePrefetch, useTransitionRoute)
+src/client/components/    → componentes de dominio (tasks/) y UI genérica (ui/), más infraestructura (router/)
+src/client/pages/          → vistas mapeadas a rutas de preact-iso
+```
