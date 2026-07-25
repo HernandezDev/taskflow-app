@@ -7,7 +7,7 @@ import { offlineTasksStore } from "../stores/offlineTasksStore";
 // 1. INFERENCIA DE TIPOS
 type TasksResponse = InferResponseType<typeof rpc.api.tasks.$get, 200>;
 export type Task = TasksResponse extends { data: (infer U)[] } ? U : never;
-type UpdateTaskInput = InferRequestType<(typeof rpc.api.tasks)[":id"]["$patch"]>["json"];
+export type UpdateTaskInput = InferRequestType<(typeof rpc.api.tasks)[":id"]["$patch"]>["json"];
 
 // 2. FUNCIÓN DE FETCH
 const fetchTasksFn = async (abortSignal: AbortSignal): Promise<Task[]> => {
