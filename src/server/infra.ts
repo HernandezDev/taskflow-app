@@ -7,7 +7,6 @@ import type { Bindings } from "./types";
 
 // 🛡️ Tipado explícito inyectando el esquema local
 let _db: DrizzleD1Database<typeof schema> | null = null;
-let _auth: AuthType | null = null;
 
 export const getDb = (env: Bindings) => {
 	if (!_db) {
@@ -17,20 +16,22 @@ export const getDb = (env: Bindings) => {
 };
 
 /**
- * Patrón Singleton Atómico para Cloudflare Workers.
- * Se inicializa una sola vez por Isolate y deriva la URL base de forma reactiva
- * a partir del request actual para adaptarse a Producción, Previews o Local.
+ * Instancia de auth por request — no se cachea a nivel de módulo.
+ *
+ * Motivos:
+ * 1. baseURL se recalcula fresco en cada request a partir de la URL real,
+ *    en vez de quedar congelado con el primer request que "calienta" el Isolate.
+ * 2. Sin caché, no hay riesgo de que dos requests concurrentes comparariacomparten
+ *    una instancia si en algún momento se habilita advanced.backgroundTasks
+ *    (hoy desactivado).
  */
-export const getAuth = (env: Bindings, request: Request): AuthType => {
-	if (!_auth) {
-		const url = new URL(request.url);
-		const currentBaseURL = `${url.protocol}//${url.host}`;
+export const createRequestAuth = (env: Bindings, request: Request): AuthType => {
+	const url = new URL(request.url);
+	const currentBaseURL = `${url.protocol}//${url.host}`;
 
-		_auth = createAuth({
-			database: env.DB,
-			secret: env.BETTER_AUTH_SECRET,
-			baseURL: currentBaseURL,
-		});
-	}
-	return _auth;
+	return createAuth({
+		database: env.DB,
+		secret: env.BETTER_AUTH_SECRET,
+		baseURL: currentBaseURL,
+	});
 };

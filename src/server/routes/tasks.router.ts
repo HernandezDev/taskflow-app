@@ -2,7 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { task } from "../db";
-import { getAuth, getDb } from "../infra";
+import { sessionMiddleware } from "../middlewares/session";
 import type { AppEnv } from "../types";
 import {
 	createTaskValidator,
@@ -11,23 +11,14 @@ import {
 } from "../validations/task.validation";
 
 export const tasksRouter = new Hono<AppEnv>()
-	// 🛡️ Middleware perimetral: Valida la sesión una sola vez para todo el router de tareas
-	.use("*", async (c, next) => {
-		const auth = getAuth(c.env, c.req.raw);
-		const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-		if (!session?.user) {
-			return c.json({ success: false, error: "No autorizado" }, 401);
-		}
-
-		// Inyectamos el usuario en el contexto de Hono de forma segura
-		c.set("user", session.user);
-		await next();
-	})
+	.use("*", sessionMiddleware)
 
 	.get("/", async (c) => {
 		const user = c.get("user");
-		const db = getDb(c.env);
+		if (!user) {
+			return c.json({ success: false, error: "No autorizado" }, 401);
+		}
+		const db = c.get("db");
 		const userTasks = await db.select().from(task).where(eq(task.userId, user.id));
 
 		return c.json({ success: true, data: userTasks });
@@ -35,8 +26,11 @@ export const tasksRouter = new Hono<AppEnv>()
 
 	.post("/", zValidator("json", createTaskValidator), async (c) => {
 		const user = c.get("user");
+		if (!user) {
+			return c.json({ success: false, error: "No autorizado" }, 401);
+		}
 		const body = c.req.valid("json");
-		const db = getDb(c.env);
+		const db = c.get("db");
 
 		const [newTask] = await db
 			.insert(task)
@@ -56,9 +50,12 @@ export const tasksRouter = new Hono<AppEnv>()
 		zValidator("json", updateTaskValidator),
 		async (c) => {
 			const user = c.get("user");
+			if (!user) {
+				return c.json({ success: false, error: "No autorizado" }, 401);
+			}
 			const { id: taskId } = c.req.valid("param");
 			const body = c.req.valid("json");
-			const db = getDb(c.env);
+			const db = c.get("db");
 
 			const [updatedTask] = await db
 				.update(task)
@@ -85,8 +82,11 @@ export const tasksRouter = new Hono<AppEnv>()
 
 	.delete("/:id", zValidator("param", taskIdParamValidator), async (c) => {
 		const user = c.get("user");
+		if (!user) {
+			return c.json({ success: false, error: "No autorizado" }, 401);
+		}
 		const { id: taskId } = c.req.valid("param");
-		const db = getDb(c.env);
+		const db = c.get("db");
 
 		const [deletedTask] = await db
 			.delete(task)

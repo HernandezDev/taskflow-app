@@ -1,16 +1,19 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { getAuth } from "./infra";
+import { logger } from "hono/logger";
+import { createRequestAuth, getDb } from "./infra";
 import { tasksRouter } from "./routes/tasks.router";
 import type { AppEnv } from "./types";
 
 const app = new Hono<AppEnv>();
 
+// 0. 📝 Logger: primero en la cadena, para registrar toda request entrante
+app.use(logger());
+
 // 1. 🛡️ RUTA CRÍTICA ADELANTADA: Auth se procesa antes de cualquier CORS o parseo de stream.
-// Se mantiene tu instanciación dinámica basada en Origin y URL.
 app.all("/api/auth/*", (c) => {
 	try {
-		const auth = getAuth(c.env, c.req.raw);
+		const auth = createRequestAuth(c.env, c.req.raw);
 		return auth.handler(c.req.raw);
 	} catch (_e) {
 		return c.json({ error: "No autorizado" }, 403);
@@ -26,7 +29,15 @@ app.use(
 	}),
 );
 
-// 3. API - Sub-enrutador encadenable
+// 3. 🔧 Middleware de infraestructura: db y auth por request, disponibles en c.get(...)
+//    para que ningún router necesite llamar getDb/createRequestAuth a mano.
+app.use("/api/*", async (c, next) => {
+	c.set("db", getDb(c.env));
+	c.set("auth", createRequestAuth(c.env, c.req.raw));
+	await next();
+});
+
+// 4. API - Sub-enrutador encadenable
 const apiRoutes = new Hono<AppEnv>()
 	.get("/health", (c) => c.json({ status: "ok" }))
 	.route("/tasks", tasksRouter);
@@ -34,7 +45,7 @@ const apiRoutes = new Hono<AppEnv>()
 // Montamos la API y exportamos el tipo para el RPC tipado
 const routes = app.route("/api", apiRoutes);
 
-// 4. ORQUESTACIÓN - Frontend estático
+// 5. ORQUESTACIÓN - Frontend estático
 if (!import.meta.env.DEV) {
 	app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 }
