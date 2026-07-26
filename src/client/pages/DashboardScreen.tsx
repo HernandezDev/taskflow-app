@@ -1,9 +1,10 @@
 import { UserIcon } from "@phosphor-icons/react";
+import { useModel } from "@preact/signals";
 import { TaskItem } from "../components/tasks/TaskItem";
 import { TaskQuickAdd } from "../components/tasks/TaskQuickAdd";
 import { useTransitionRoute } from "../hooks/useTransitionRoute";
+import { TaskModel } from "../models/TaskModel";
 import { authStore } from "../stores/authStore";
-import { tasksStore } from "../stores/tasksStore";
 
 export function DashboardScreen() {
     const route = useTransitionRoute();
@@ -13,22 +14,17 @@ export function DashboardScreen() {
     const displayName = user?.name ?? user?.email ?? "Usuario";
 
     const handleLogout = async () => {
-        // 1. Llamamos al método de logout del store
         await authStore.logout();
-
-        // 2. Redirigimos al Login reemplazando el historial (true)
-        // para que el usuario no pueda usar el botón "Atrás" del navegador
         route("/", { replace: true, direction: "backward" });
     };
 
-    // 1. Consumo directo de Signals. Cero useEffect, cero dependencias de ciclo de vida.
-    // La reactividad ocurre granularmente a nivel de nodo DOM gracias a @preact/signals.
-    const { data: tasks, isLoading, error } = tasksStore;
+    // Instancia efímera: se crea al montar Dashboard, se destruye (junto al
+    // fetch en vuelo) al desmontar. Ya no es un singleton global.
+    const taskModel = useModel(TaskModel);
+    const { data: tasks, isLoading, error } = taskModel;
 
-    // 2. Estado derivado síncrono. 
-    // Al leer tasks.value, Preact se suscribe automáticamente a los cambios.
-    const sortedTasks = [...tasks.value].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    const sortedTasks = [...tasks.value].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
     return (
@@ -57,7 +53,7 @@ export function DashboardScreen() {
             </header>
 
             <main class="flex flex-col gap-6">
-                <TaskQuickAdd />
+                <TaskQuickAdd onAdd={taskModel.addTask} />
 
                 {error.value && (
                     <div class="p-3 bg-red-50 text-red-600 rounded-md text-sm border border-red-200">
@@ -72,7 +68,12 @@ export function DashboardScreen() {
                         </div>
                     ) : (
                         sortedTasks.map((task) => (
-                            <TaskItem key={task.id} task={task} />
+                            <TaskItem
+                                key={task.id}
+                                task={task}
+                                onUpdate={taskModel.updateTask}
+                                onDelete={taskModel.deleteTask}
+                            />
                         ))
                     )}
                 </section>

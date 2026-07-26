@@ -65,7 +65,12 @@ export const tasksRouter = new Hono<AppEnv>()
 				.set({
 					title: body.title,
 					status: body.status,
-					deadline: body.deadline ? new Date(body.deadline) : undefined,
+					deadline:
+						body.deadline === undefined
+							? undefined
+							: body.deadline === null
+								? null
+								: new Date(body.deadline),
 				})
 				.where(and(eq(task.id, taskId), eq(task.userId, user.id)))
 				.returning();

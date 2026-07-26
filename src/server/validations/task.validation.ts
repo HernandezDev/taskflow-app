@@ -10,7 +10,7 @@ export const createTaskValidator = z.object({
 export const updateTaskValidator = z.object({
 	title: z.string().min(1).max(255).optional(),
 	status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED"]).optional(),
-	deadline: z.number().int().positive().optional(),
+	deadline: z.number().int().positive().nullable().optional(),
 });
 
 export const taskIdParamValidator = z.object({
