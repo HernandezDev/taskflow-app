@@ -2,7 +2,7 @@
 
 Este documento describe cómo está construido el proyecto **realmente**, no cómo se planeó originalmente. Está pensado tanto para vos en el futuro como para cualquier agente (IA o humano) que trabaje sobre el código: seguir estas convenciones mantiene el proyecto consistente.
 
-> Nota histórica: una versión anterior de este documento describía un patrón más estricto (prohibición total de hooks nativos fuera de la capa de infraestructura). En la práctica, ese patrón resultó demasiado rígido para casos reales de sincronización UI↔estado, así que la regla se ajustó. Ver sección 2.
+> Nota histórica: una versión anterior de este documento describía un patrón más estricto (prohibición total de hooks nativos fuera de la capa de infraestructura), y el manejo de tareas vivía en un singleton global (`tasksStore.ts`) con `useOptimisticMutation` como hook de sincronización en cada componente editable. Ambas cosas se revisaron: el estado de tareas pasó a ser un modelo efímero atado a la pantalla de Dashboard (`TaskModel`, vía `useModel`), y el optimismo/rollback se centralizó ahí en vez de repetirse por componente. Ver secciones 2 y 7.
 
 ---
 
@@ -26,22 +26,26 @@ Existen tres niveles, según el alcance del dato:
 
 | Nivel | Herramienta | Cuándo usarlo | Ejemplo en el proyecto |
 |---|---|---|---|
-| Global (singleton) | Objeto literal con signals privadas + interfaz pública `ReadonlySignal` | Datos que persisten mientras la app esté abierta: sesión, lista de tareas | `authStore.ts`, `tasksStore.ts` |
-| Modelo de datos remotos | `createModel` (vía la factory propia `createRpcModel`) | Envolver un fetch con estado de carga/error, reusable en distintos stores | `lib/createRpcModel.ts`, usado por `tasksStore` |
-| Efímero atado a un componente | `useModel` | Estado de interacción local que debe destruirse al desmontar (formularios complejos, paginación local) | **Todavía sin uso** — la app no tiene pantallas con ese nivel de complejidad. No evitar `useModel` por sistema si aparece un caso real; es una herramienta válida y disponible en `@preact/signals`. |
+| Global (singleton) | Objeto literal con signals privadas + interfaz pública `ReadonlySignal` | Datos que persisten mientras la app esté abierta, sin importar la pantalla: sesión, caché offline | `authStore.ts`, `offlineTasksStore.ts` |
+| Modelo de datos remotos | `createModel` (vía la factory propia `createRpcModel`) | Envolver un fetch con estado de carga/error/auto-fetch, reusable dentro de otros modelos | `lib/createRpcModel.ts`, usado internamente por `TaskModel` |
+| Efímero atado a un componente | `useModel` | Estado de una pantalla completa que debe destruirse al desmontar: datos remotos + acciones de mutación de esa vista | `models/TaskModel.ts`, instanciado con `useModel(TaskModel)` en `DashboardScreen` |
 
-`createRpcModel` es un wrapper propio sobre `createModel` que resuelve el patrón "fetch + `isLoading` + `error` + `AbortController`" de forma reutilizable. Es el patrón a seguir para cualquier store que consuma datos del servidor.
+`createRpcModel` resuelve el patrón "fetch + `isLoading` + `error` + `AbortController` + auto-fetch al crearse" de forma reutilizable. `TaskModel` lo usa como pieza interna (`resource = createRpcModel(...)`), no lo reemplaza — sobre esa base agrega las acciones de dominio (`addTask`, `updateTask`, `deleteTask`) y la sincronización con el caché offline.
+
+**Disposal en cascada:** como `createRpcModel` devuelve una instancia con su propio `[Symbol.dispose]`, y esa instancia vive *dentro* de la factory de otro `createModel` (`TaskModel`), no hay nada automático que conecte ambos ciclos de vida. `TaskModel` registra un `effect` de limpieza propio que llama explícitamente a `resource[Symbol.dispose]()` — sin eso, al desmontar `DashboardScreen` el modelo externo se limpia pero el `resource` interno (y su fetch en vuelo) no.
+
+**Auto-fetch y orden de montaje:** `createRpcModel` dispara la petición apenas se instancia, sin esperar ninguna condición externa. Esto es seguro porque `DashboardScreen` (donde se crea `TaskModel` vía `useModel`) solo se monta detrás de `PrivateRoute`, que ya bloquea el render hasta que `authStore.isInitializing` es `false` y `authStore.isAuthenticated` es `true`. Si `TaskModel` (u otro modelo con auto-fetch) se usara en una pantalla que no esté detrás de ese guard, hay que reintroducir algún mecanismo de espera — no asumir que el auto-fetch es siempre seguro.
 
 ### 2.2 Hooks nativos de Preact — cuándo sí
 
-La regla original prohibía hooks nativos (`useEffect`, etc.) fuera de infraestructura (bootstrap, guards de ruta). En la práctica esto no cubre un caso legítimo: **sincronizar un signal local con una prop que cambia por fuera del componente** (ej. edición optimista de un campo cuyo valor real puede llegar actualizado desde el servidor).
+La regla original prohibía hooks nativos (`useEffect`, etc.) fuera de infraestructura (bootstrap, guards de ruta), con una única excepción documentada: `useOptimisticMutation`, que sincronizaba un signal local con una prop externa para hacer optimistic update por componente. Ese hook **ya no existe** — se eliminó al mover el optimismo y el rollback a `TaskModel.updateTask`, que muta el modelo directamente y revierte con el valor previo si la petición falla. Los componentes de tarea (`TaskStatusControl`, y el título vía `Editable`) ya no mantienen una copia local del valor: leen directo la signal que expone `TaskModel.data`, así que no hay nada que resincronizar con `useEffect` por ese motivo.
 
-Regla actualizada:
+Sigue existiendo un caso legítimo de `useEffect`, distinto del anterior: **sincronizar el estado interno de una librería de terceros con una prop controlada externamente**, cuando esa librería no ofrece un modo verdaderamente controlado.
 
-- **Preferir signals puros** para toda la lógica de estado y derivaciones (`computed`).
-- **`useEffect` está permitido** cuando el objetivo es sincronizar estado interno con el ciclo de vida del componente o con props externas — no como reemplazo general de `computed`/`effect` de signals.
-- Patrón de referencia: `hooks/useOptimisticMutation.ts`. Envuelve un signal local (`localValue`), lo hidrata con `useEffect` cuando cambia el valor inicial recibido por props, y expone `commitChange` con rollback automático si la mutación al servidor falla. Usar este hook (o este patrón) para cualquier campo editable inline con optimistic update.
+- Patrón de referencia: `components/ui/Editable.tsx`. Usa `editable.machine` de Zag.js en modo **no controlado** (`defaultValue`, no `value` + `onValueChange`) — pasarle `value` sin su `onValueChange` correspondiente deja a Zag sin saber cuándo el valor "controlado" cambió, y al confirmar una edición la máquina puede volver al valor inicial en vez de al nuevo. La solución no es un `useEffect` de sincronización constante, sino un `api.setValue(value)` explícito, invocado solo en el momento puntual en que hace falta forzar el valor desde afuera (rollback tras un commit fallido).
 - Los guards de ruta (`PrivateRoute`, `GuestRoute`) y el bootstrap raíz (`App.tsx`) siguen siendo los casos de infraestructura donde `useEffect` es la herramienta esperada.
+
+**Limitación conocida y aceptada:** al usar `defaultValue` (no controlado), si el valor cambiara por una causa completamente externa a la propia edición del usuario (otra pestaña, una futura sincronización en tiempo real) mientras el componente sigue montado, `Editable` no se entera después del montaje inicial. Para el alcance actual del proyecto esto no es un problema real; si se agrega sincronización en tiempo real, hay que revisar este componente.
 
 ### 2.3 Enrutador (`preact-iso`)
 
@@ -51,8 +55,9 @@ Router oficial del proyecto. Sus hooks (`useLocation`, etc.) están confinados a
 
 - **Encapsulamiento:** todo estado expuesto a la UI se tipa como `ReadonlySignal` en una interfaz explícita. Las signals internas son privadas al módulo/modelo; la única forma de mutarlas desde afuera es a través de los métodos expuestos.
 - **Lectura en JSX:** pasar la signal directamente (`<p>{count}</p>`, `value={inputValue}`), no `.value` — así la mutación actualiza el nodo del DOM real directamente y evita pasar por el ciclo de diffing/reconciliación del Virtual DOM de Preact para ese valor puntual.
+  - **Excepción legítima:** al iterar una lista para generar múltiples nodos (`tasks.value.map(...)`), hace falta el valor concreto del array, no la signal en sí — ahí sí corresponde leer `.value`. La regla de "pasar la signal directa" aplica a valores escalares en un único nodo, no a colecciones que se mapean.
 - **Batching:** agrupar mutaciones relacionadas con `batch(() => { ... })` (ver `authStore.checkSession`, `createRpcModel.execute`).
-- **Limpieza de recursos:** si un modelo maneja un `AbortController` u otro recurso externo, registrar su limpieza en un `effect` sin dependencias que retorne la función de cleanup (ver `createRpcModel`).
+- **Limpieza de recursos:** si un modelo maneja un `AbortController` u otro recurso externo, registrar su limpieza en un `effect` sin dependencias que retorne la función de cleanup (ver `createRpcModel`, y el disposal en cascada de `TaskModel` descrito en 2.1).
 
 ---
 
@@ -84,6 +89,7 @@ En desarrollo, `@hono/vite-dev-server` (con el adapter de Cloudflare) monta el b
 - **Base de datos:** Cloudflare D1 (SQLite), vía Drizzle ORM.
 - **Rutas:** encadenadas (`.get().post().patch()...`) para poder exportar un tipo unificado (`AppType`) que el cliente RPC consume.
 - La inicialización de la conexión a D1 se mantiene separada de la configuración de Better Auth.
+- **Distinguir "campo ausente" de "campo `null`" en updates parciales:** en validaciones y en el `.set()` de Drizzle, no usar un ternario truthy/falsy simple (`body.campo ? valor : undefined`) cuando el campo debe poder vaciarse explícitamente — `null` es falsy en JS y ese patrón lo trata igual que "no vino en el body", haciendo imposible borrar el valor. Ver `updateTaskValidator` (`deadline` con `.nullable().optional()`) y el `.set()` de `tasks.router.ts` como referencia: comparar explícitamente contra `=== undefined` y `=== null` por separado.
 
 ---
 
@@ -125,8 +131,9 @@ Todo fetch (de cualquiera de los dos canales) se encapsula en un modelo (store o
 ## 6. TypeScript
 
 - Project references: `tsconfig.client.json` y `tsconfig.server.json`.
-- `verbatimModuleSyntax` habilitado → usar `import type` para tipos que cruzan la frontera cliente/servidor.
+- `verbatimModuleSyntax` habilitado → usar `import type` para tipos que cruzan la frontera cliente/servidor. Ojo con exportar el `type` en el mismo lugar donde se declara (`export type X = ...`); con `verbatimModuleSyntax` una declaración local que se intenta re-exportar después no alcanza — TS la sigue viendo como no exportada en el punto de origen.
 - Alias `@server` disponible desde el cliente para importar tipos del servidor (`AppType`, `AuthType`) sin rutas relativas largas.
+- Tipos de dominio inferidos de Hono (`Task`, `UpdateTaskInput` en `models/TaskModel.ts`) se exportan desde ahí y se reutilizan en los componentes que los necesitan (`TaskItem`, `TaskStatusControl`) en vez de redeclararse a mano — evita que dos definiciones del mismo shape se desincronicen.
 - **Tipos de Cloudflare:** el proyecto usa el paquete estático `@cloudflare/workers-types` (fijado en `package.json` como `^4.20260619.1`), no la generación por proyecto (`wrangler types` / script `cf-typegen`). Es una decisión deliberada: evita tener que regenerar tipos cada vez que cambian los bindings. Cloudflare recomienda migrar a la generación vía Wrangler, pero el paquete sigue actualizándose con versiones nuevas periódicamente, así que no hay urgencia.
   - **Detalle de versión importante:** el esquema `4.YYYYMMDD.patch` de la v4 ancla los tipos a un snapshot de fecha concreto de `workerd` (en este caso, 19/06/2026) — el mismo beneficio de precisión que da `wrangler types`, sin tener que generarlo. El rango `^4.20260619.1` en `package.json` evita saltar a mayor solo con `pnpm update`.
   - **Cuidado al actualizar a mano:** desde julio 2026 existe `@cloudflare/workers-types` v5, que simplificó el paquete a solo dos entrypoints (`workers-types` y `workers-types/experimental`) y **eliminó el anclaje por fecha** — con v5 siempre se obtienen los tipos de la compat date más reciente que soporte esa versión del paquete, no una fecha específica. Si en algún momento se corre `pnpm add -D @cloudflare/workers-types@latest` a mano, se pierde ese anclaje. No actualizar a v5 sin evaluar el impacto, o migrar a `wrangler types` en ese momento.
@@ -136,17 +143,24 @@ Todo fetch (de cualquiera de los dos canales) se encapsula en un modelo (store o
 ## 7. Modelo de dominio: tareas
 
 - **Estados:** `PENDING` → `IN_PROGRESS` → `COMPLETED`.
-- **Deadline:** opcional, `datetime-local`.
+- **Deadline:** opcional, `datetime-local` en la creación. En la actualización, el campo distingue tres casos: ausente (no tocar), `null` (quitar la fecha límite) o un número (fecha nueva) — ver sección 4. **La capacidad de quitar la fecha existe en el modelo de datos (`TaskModel.updateTask`, validador y router) pero todavía no tiene control expuesto en la UI** (ej. un botón para vaciar el deadline en `TaskItem`).
 - **Overdue (derivado, no persistido):** una tarea es atrasada si `status !== "COMPLETED"` y `deadline` está definido y es anterior a `Date.now()`. Se calcula en el cliente, reactivamente, vía `computed`.
+
+### 7.1 Dónde vive cada pieza
+
+- **`models/TaskModel.ts`** (`createModel`, instanciado con `useModel` en `DashboardScreen`): estado de la lista de tareas (`data`, `isLoading`, `error`) más las acciones `addTask`, `updateTask`, `deleteTask`. `updateTask` aplica el cambio de forma optimista sobre `resource.data` y revierte al valor previo si la petición al servidor falla — el rollback vive acá, no en los componentes.
+- **`stores/offlineTasksStore.ts`** (singleton): única responsabilidad, leer/escribir el caché de `localStorage` (`getCached<T>()` / `setCached<T>()`). No sabe nada de fetch, RPC, ni de la forma específica de una tarea — es genérico. `TaskModel` lo usa para poblar el estado inicial y para persistir cada cambio de `resource.data` vía `effect`.
+- **`components/tasks/TaskItem.tsx`, `TaskQuickAdd.tsx`, `components/ui/TaskStatusControl.tsx`**: reciben `addTask`/`updateTask`/`deleteTask` **por props** desde `DashboardScreen` — no importan nada de un módulo global, porque ya no existe un singleton del que importar. Si se agrega un componente nuevo que necesite mutar tareas, debe recibir la acción correspondiente por props (o releer `TaskModel` vía `useModel` si vive dentro del mismo árbol de Dashboard), no reintroducir un import directo a un store global.
 
 ---
 
 ## 8. Organización de archivos
 
 ```
-src/client/lib/        → cliente RPC, cliente de auth, factories de modelos (createRpcModel)
-src/client/stores/      → singletons globales (authStore, tasksStore)
-src/client/hooks/        → hooks utilitarios reusables (useOptimisticMutation, usePrefetch, useTransitionRoute)
-src/client/components/    → componentes de dominio (tasks/) y UI genérica (ui/), más infraestructura (router/)
-src/client/pages/          → vistas mapeadas a rutas de preact-iso
+src/client/lib/        → cliente RPC, cliente de auth, factory de modelos remotos (createRpcModel)
+src/client/models/       → modelos efímeros atados a pantalla, vía createModel + useModel (TaskModel)
+src/client/stores/        → singletons globales: sesión (authStore), caché offline (offlineTasksStore)
+src/client/hooks/           → hooks utilitarios reusables (usePrefetch, useTransitionRoute)
+src/client/components/       → componentes de dominio (tasks/) y UI genérica (ui/), más infraestructura (router/)
+src/client/pages/              → vistas mapeadas a rutas de preact-iso, dueñas de instanciar los modelos con useModel
 ```
