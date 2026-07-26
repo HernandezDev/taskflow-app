@@ -1,7 +1,7 @@
+import { useSignal } from "@preact/signals";
 import { normalizeProps, useMachine } from "@zag-js/preact";
 import * as radio from "@zag-js/radio-group";
 import { useId } from "preact/hooks";
-import { useOptimisticMutation } from "../../hooks/useOptimisticMutation";
 import type { UpdateTaskInput } from "../../models/TaskModel";
 
 export type TaskStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
@@ -19,27 +19,36 @@ const STATUS_OPTIONS: { label: string; value: TaskStatus }[] = [
 ];
 
 export function TaskStatusControl({ taskId, currentStatus, onUpdate }: TaskStatusControlProps) {
-    const { localValue, isSaving, errorMsg, commitChange } = useOptimisticMutation<TaskStatus>(
-        currentStatus,
-        (newVal) => onUpdate(taskId, { status: newVal }),
-    );
+    // Estas dos son genuinamente locales: no representan una copia de un valor
+    // externo, solo el estado transitorio de "hay una petición en curso ahora mismo".
+    const isSaving = useSignal(false);
+    const errorMsg = useSignal<string | null>(null);
+
+    const handleChange = async (newStatus: TaskStatus) => {
+        isSaving.value = true;
+        errorMsg.value = null;
+
+        const success = await onUpdate(taskId, { status: newStatus });
+
+        if (!success) {
+            errorMsg.value = "Error de red. Cambios revertidos.";
+        }
+        isSaving.value = false;
+    };
 
     const service = useMachine(radio.machine, {
         id: useId(),
-        value: localValue.value,
+        value: currentStatus, // fuente única: el modelo, no una copia local
         orientation: "horizontal",
         disabled: isSaving.value,
-        onValueChange: (details) => commitChange(details.value as TaskStatus),
+        onValueChange: (details) => handleChange(details.value as TaskStatus),
     });
 
     const api = radio.connect(service, normalizeProps);
 
     return (
         <div class="flex flex-col gap-1 w-full max-w-sm">
-            <div
-                {...api.getRootProps()}
-                class="flex items-center gap-1 bg-gray-100 p-1 rounded-md border border-gray-200 w-full"
-            >
+            <div {...api.getRootProps()} class="flex items-center gap-1 bg-gray-100 p-1 rounded-md border border-gray-200 w-full">
                 {STATUS_OPTIONS.map((opt) => (
                     <label
                         key={opt.value}

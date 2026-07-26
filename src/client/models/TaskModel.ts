@@ -64,6 +64,25 @@ export const TaskModel = createModel(() => {
 	};
 
 	const updateTask = async (id: string, updates: UpdateTaskInput) => {
+		const previous = resource.data.value;
+
+		resource.mutate((prevTasks) =>
+			prevTasks.map((task) => {
+				if (task.id !== id) return task;
+
+				return {
+					...task,
+					...updates,
+					deadline:
+						updates.deadline === undefined
+							? task.deadline
+							: updates.deadline === null
+								? null
+								: new Date(updates.deadline).toISOString(),
+				};
+			}),
+		);
+
 		try {
 			const res = await rpc.api.tasks[":id"].$patch({
 				param: { id },
@@ -75,11 +94,11 @@ export const TaskModel = createModel(() => {
 			}
 
 			const json = await res.json();
-
 			resource.mutate((prevTasks) => prevTasks.map((task) => (task.id === id ? json.data : task)));
 			return true;
 		} catch (err) {
 			console.error("[TaskModel] updateTask:", err);
+			resource.mutate(() => previous);
 			return false;
 		}
 	};
