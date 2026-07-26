@@ -23,13 +23,14 @@ export function Editable({ value, onCommit, placeholder = "Editar...", disabled 
 
         if (!success) {
             errorMsg.value = "Error de red. Cambios revertidos.";
+            api.setValue(value); // rollback explícito: volvemos al último valor confirmado
         }
         isSaving.value = false;
     };
 
     const service = useMachine(editable.machine, {
         id: useId(),
-        value, // fuente única: el prop, que ya viene del modelo
+        defaultValue: value, // no controlado: Zag maneja el valor internamente después del montaje
         disabled: disabled || isSaving.value,
         submitMode: "both",
         activationMode: "click",
