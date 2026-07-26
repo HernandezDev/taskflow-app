@@ -11,14 +11,12 @@ export type Bindings = {
 	ASSETS: Fetcher;
 };
 
-// 🛡️ Contrato ampliado para el contexto de Hono
 export type AppEnv = {
 	Bindings: Bindings;
 	Variables: {
 		user: User | null;
 		session: Session | null;
-		db?: DrizzleD1Database<typeof schema>;
-		auth?: AuthType;
+		db: DrizzleD1Database<typeof schema>;
+		auth: AuthType;
 	};
 };
-// borrar "?"  cuando se tenga la implementación completa del midelware
