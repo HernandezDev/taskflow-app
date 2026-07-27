@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { createRequestAuth, getDb } from "./infra";
+import { getAuth, getDb } from "./infra";
 import { tasksRouter } from "./routes/tasks.router";
 import type { AppEnv } from "./types";
 
@@ -13,7 +13,7 @@ app.use(logger());
 // 1. 🛡️ RUTA CRÍTICA ADELANTADA: Auth se procesa antes de cualquier CORS o parseo de stream.
 app.all("/api/auth/*", (c) => {
 	try {
-		const auth = createRequestAuth(c.env, c.req.raw);
+		const auth = getAuth(c.env, c.req.raw);
 		return auth.handler(c.req.raw);
 	} catch (_e) {
 		return c.json({ error: "No autorizado" }, 403);
@@ -30,10 +30,11 @@ app.use(
 );
 
 // 3. 🔧 Middleware de infraestructura: db y auth por request, disponibles en c.get(...)
-//    para que ningún router necesite llamar getDb/createRequestAuth a mano.
+//    para que ningún router necesite llamar getDb/getAuth a mano. auth se cachea
+//    internamente por baseURL (ver infra.ts).
 app.use("/api/*", async (c, next) => {
 	c.set("db", getDb(c.env));
-	c.set("auth", createRequestAuth(c.env, c.req.raw));
+	c.set("auth", getAuth(c.env, c.req.raw));
 	await next();
 });
 
