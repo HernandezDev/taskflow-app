@@ -6,7 +6,7 @@ import * as schema from "../db";
 
 // Iteraciones de PBKDF2, mínimo recomendado por OWASP para HMAC-SHA256 (2026).
 // Subir este número si el hardware de ataque mejora; ver Password Storage Cheat Sheet.
-const PBKDF2_ITERATIONS = 600_000;
+const PBKDF2_ITERATIONS = 100_000;
 
 export const createAuth = (config: { database: D1Database; secret: string; baseURL: string }) => {
 	const db = drizzle(config.database, { schema });
