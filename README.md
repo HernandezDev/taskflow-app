@@ -145,9 +145,10 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 ## Roadmap
 
 ### Fase 1: Flujo de Datos Core y Layout Base (Must Have)
-- [ ] **[DB-001] Ordenamiento Semántico:** Inyección de `ORDER BY status ASC, deadline ASC NULLS LAST` en D1 para garantizar la jerarquía visual desde el servidor.
-- [ ] **[UI-002] Widget de Deadline:** Interfaz de captura y mutación reactiva para la fecha límite de la tarea, asegurando la transformación del *input* del cliente al contrato numérico (*Unix timestamp*) requerido por la API. *(Bloqueador de UI-001)*.
-- [ ] **[UI-001] Dashboard Móvil:** Refactorización a *Responsive Grid* para alojar los widgets y optimizar la usabilidad en pantallas pequeñas con los datos semánticamente ordenados.
+- [x] **[DB-001] Ordenamiento Semántico:** Inyección de `CASE WHEN` dinámico y `NULLS LAST` en D1 para garantizar la jerarquía visual de estados y fechas directamente desde el servidor.
+- [ ] **[UI-002] Widget de Deadline:** Interfaz de captura (`datetime-local`) y mutación reactiva para la fecha límite de la tarea, asegurando el envío del *String ISO* simétrico consumido por el contrato de Zod (`z.coerce.date()`) en la API. *(Bloqueador de UI-001-B)*.
+- [x] **[UI-001-A] Dashboard Layout Base:** purga del ordenamiento local (`.sort()`) y adopción del componente optimizado `<For>` de `@preact/signals/utils`.
+- [ ] **[UI-001-B] Ergonomía Táctil Mobile:** Adaptación de áreas de impacto (*touch targets*), truncamiento defensivo de textos y corrección visual de widgets para evitar desbordamientos en pantallas táctiles pequeñas.
 
 ### Fase 2: Identidad Periférica y Estabilización (Should Have)
 - [ ] **[AUTH-001] OAuth 2.0:** Integración de inicio de sesión con Google Provider vía Better Auth, configurando credenciales de entorno en Cloudflare.
