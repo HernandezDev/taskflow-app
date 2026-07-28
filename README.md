@@ -144,10 +144,17 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 
 ## Roadmap
 
-<!-- ⚠️ PLACEHOLDER: completá con lo que realmente tenés pensado. Ejemplos: -->
-- [ ] Tests unitarios y de integración
-- [ ] Filtros y ordenamiento de tareas (por estado, deadline)
-- [ ] Notificaciones de tareas próximas a vencer
+### Fase 1: Flujo de Datos Core y Layout Base (Must Have)
+- [ ] **[DB-001] Ordenamiento Semántico:** Inyección de `ORDER BY status ASC, deadline ASC NULLS LAST` en D1 para garantizar la jerarquía visual desde el servidor.
+- [ ] **[UI-002] Widget de Deadline:** Interfaz de captura y mutación reactiva para la fecha límite de la tarea, asegurando la transformación del *input* del cliente al contrato numérico (*Unix timestamp*) requerido por la API. *(Bloqueador de UI-001)*.
+- [ ] **[UI-001] Dashboard Móvil:** Refactorización a *Responsive Grid* para alojar los widgets y optimizar la usabilidad en pantallas pequeñas con los datos semánticamente ordenados.
+
+### Fase 2: Identidad Periférica y Estabilización (Should Have)
+- [ ] **[AUTH-001] OAuth 2.0:** Integración de inicio de sesión con Google Provider vía Better Auth, configurando credenciales de entorno en Cloudflare.
+- [ ] **[SYS-001] Debug PWA:** Auditoría de instalación, registro de *Service Worker* y verificación de la estrategia de caché *offline-first*.
+
+### Fase 3: Post-MVP (Won't Have / Pospuesto)
+- [ ] **[SYS-002] Migración de Bundler:** Adopción de `@cloudflare/vite-plugin`. Tarea bloqueada intencionalmente hasta el congelamiento del código base para evitar riesgos de compilación en el MVP.
 
 ## Licencia
 
