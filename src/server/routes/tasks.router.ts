@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { task } from "../db";
 import { sessionMiddleware } from "../middlewares/session";
@@ -10,6 +10,14 @@ import {
 	updateTaskValidator,
 } from "../validations/task.validation";
 
+// Función auxiliar de deshidratación para proteger el contrato RPC
+const serializeTask = (t: typeof task.$inferSelect) => ({
+	...t,
+	deadline: t.deadline ? t.deadline.toISOString() : null,
+	createdAt: t.createdAt.toISOString(),
+	updatedAt: t.updatedAt.toISOString(),
+});
+
 export const tasksRouter = new Hono<AppEnv>()
 	.use("*", sessionMiddleware)
 
@@ -19,9 +27,22 @@ export const tasksRouter = new Hono<AppEnv>()
 			return c.json({ success: false, error: "No autorizado" }, 401);
 		}
 		const db = c.get("db");
-		const userTasks = await db.select().from(task).where(eq(task.userId, user.id));
 
-		return c.json({ success: true, data: userTasks });
+		// [DB-001] Ordenamiento semántico delegado a D1 (Limpio de imports muertos)
+		const userTasks = await db
+			.select()
+			.from(task)
+			.where(eq(task.userId, user.id))
+			.orderBy(
+				sql`CASE ${task.status} 
+                    WHEN 'PENDING' THEN 1 
+                    WHEN 'IN_PROGRESS' THEN 2 
+                    WHEN 'COMPLETED' THEN 3 
+                    ELSE 4 END ASC`,
+				sql`${task.deadline} ASC NULLS LAST`,
+			);
+
+		return c.json({ success: true, data: userTasks.map(serializeTask) });
 	})
 
 	.post("/", zValidator("json", createTaskValidator), async (c) => {
@@ -37,11 +58,11 @@ export const tasksRouter = new Hono<AppEnv>()
 			.values({
 				userId: user.id,
 				title: body.title,
-				deadline: body.deadline ? new Date(body.deadline) : undefined,
+				deadline: body.deadline ?? undefined,
 			})
 			.returning();
 
-		return c.json({ success: true, data: newTask }, 201);
+		return c.json({ success: true, data: serializeTask(newTask) }, 201);
 	})
 
 	.patch(
@@ -62,12 +83,7 @@ export const tasksRouter = new Hono<AppEnv>()
 				.set({
 					title: body.title,
 					status: body.status,
-					deadline:
-						body.deadline === undefined
-							? undefined
-							: body.deadline === null
-								? null
-								: new Date(body.deadline),
+					deadline: body.deadline,
 				})
 				.where(and(eq(task.id, taskId), eq(task.userId, user.id)))
 				.returning();
@@ -76,7 +92,7 @@ export const tasksRouter = new Hono<AppEnv>()
 				return c.json({ success: false, error: "Tarea no encontrada o sin permisos" }, 404);
 			}
 
-			return c.json({ success: true, data: updatedTask });
+			return c.json({ success: true, data: serializeTask(updatedTask) });
 		},
 	)
 
@@ -97,5 +113,5 @@ export const tasksRouter = new Hono<AppEnv>()
 			return c.json({ success: false, error: "Tarea no encontrada o sin permisos" }, 404);
 		}
 
-		return c.json({ success: true, data: deletedTask });
+		return c.json({ success: true, data: serializeTask(deletedTask) });
 	});
