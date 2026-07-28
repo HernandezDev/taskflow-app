@@ -13,10 +13,7 @@
         "database_id": "1aae459c-c8e4-4726-bdd2-f20dfefcdd47",
         "migrations_dir": "drizzle"
     	}
-	],
-	"vars": {
-        "FRONTEND_URL": "https://taskflow-app-1au.pages.dev"
-    }
+	]
 	// "vars": {
 	//   "MY_VAR": "my-variable"
 	// },

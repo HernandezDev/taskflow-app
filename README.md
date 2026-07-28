@@ -111,6 +111,29 @@ src/
 
 El proyecto compila a un único deploy de Cloudflare Pages a partir de **dos pasadas de Vite** sobre el mismo `vite.config.ts`: una en modo `client` (genera el SPA en `dist/`) y otra en modo `server` (empaqueta el backend de Hono como `dist/_worker.js` vía `@hono/vite-build/cloudflare-pages`). El script `build` las ejecuta en ese orden. En desarrollo, `@hono/vite-dev-server` sirve ambos desde el mismo proceso, enrutando todo lo que no empiece con `/api` como ruta del SPA.
 
+## Variables de entorno
+
+El proyecto necesita un archivo `.dev.vars` en la raíz para desarrollo local (no se versiona — agregado a `.gitignore`). Cloudflare Pages/Workers lo detecta automáticamente vía `wrangler dev`.
+
+```bash
+# .dev.vars
+BETTER_AUTH_SECRET=<generar con el comando de abajo>
+```
+
+Generar un secreto seguro:
+
+```bash
+openssl rand -base64 32
+```
+
+Para producción/preview, el mismo secreto se configura como variable de entorno **encriptada** en el dashboard de Cloudflare Pages (Settings → Environment variables → Secret), o vía:
+
+```bash
+npx wrangler pages secret put BETTER_AUTH_SECRET --project-name taskflow-app
+```
+
+**Nunca** commitear este valor ni ponerlo en `wrangler.jsonc` bajo `vars` (esa sección es para variables públicas, no secretas — `wrangler.jsonc` sí se versiona).
+
 ## Correr el proyecto localmente
 
 ```bash
@@ -160,4 +183,3 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 ## Licencia
 
 <!-- ⚠️ PLACEHOLDER: elegí una licencia (MIT es lo más común para portafolio) o quitá esta sección -->
-

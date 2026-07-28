@@ -7,7 +7,6 @@ import type * as schema from "./db";
 export type Bindings = {
 	DB: D1Database;
 	BETTER_AUTH_SECRET: string;
-	FRONTEND_URL: string;
 	ASSETS: Fetcher;
 };
 
