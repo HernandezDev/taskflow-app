@@ -1,7 +1,5 @@
 # TaskFlow
 
-> ⚠️ **Placeholder de nombre:** el `package.json` todavía dice `hono-spa-spike`. Usé "TaskFlow" acá porque aparece como prefijo en el `localStorage` (`taskflow_offline_tasks`). Cambialo por el nombre final antes de publicar, y actualizá el campo `name` en `package.json` para que coincida.
-
 Gestor de tareas simple con estados, deadlines y detección automática de tareas atrasadas. Full-stack, corriendo 100% en el edge de Cloudflare.
 
 <!-- ⚠️ PLACEHOLDER: agregá acá un GIF o 2-3 screenshots del flujo principal (crear tarea → cambiar estado → ver overdue). Es lo primero que un reclutador mira. -->
