@@ -7,10 +7,6 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { pwaOptions } from "./pwa.config"; // <-- 1. Importamos tu configuración aislada
 
-// 🛡️ Condiciones de resolución SSR alineadas con el runtime real (workerd),
-// escopeadas solo al código de servidor — no afecta el bundle de cliente.
-const workerdSsrConditions = ["workerd", "node", "import", "module"];
-
 export default defineConfig(({ mode }) => {
 	// ---------------------------------------------------------
 	// PASO 2: Construcción del Backend (Hono a _worker.js)
@@ -19,12 +15,6 @@ export default defineConfig(({ mode }) => {
 		return {
 			build: {
 				emptyOutDir: false,
-			},
-			ssr: {
-				noExternal: true,
-				resolve: {
-					conditions: workerdSsrConditions,
-				},
 			},
 			plugins: [
 				build({
@@ -42,11 +32,6 @@ export default defineConfig(({ mode }) => {
 		build: {
 			outDir: "dist",
 			emptyOutDir: true,
-		},
-		ssr: {
-			resolve: {
-				conditions: workerdSsrConditions,
-			},
 		},
 		plugins: [
 			tailwindcss(),
