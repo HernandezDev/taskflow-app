@@ -154,6 +154,7 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 ### Fase 2: Identidad Periférica y Estabilización (Should Have)
 - [ ] **[AUTH-001] OAuth 2.0:** Integración de inicio de sesión con Google Provider vía Better Auth, configurando credenciales de entorno en Cloudflare.
 - [ ] **[SYS-001] Debug PWA:** Auditoría de instalación, registro de *Service Worker* y verificación de la estrategia de caché *offline-first*.
+- [ ] **[SYS-003] Sincronización Reactiva de Ordenamiento:** Implementación de la lógica de reordenamiento derivado en caliente en el cliente para reflejar de forma inmediata las mutaciones sin alterar la fuente de verdad del servidor.
 
 ### Fase 3: Post-MVP (Won't Have / Pospuesto)
 - [ ] **[SYS-002] Migración de Bundler:** Adopción de `@cloudflare/vite-plugin`. Tarea bloqueada intencionalmente hasta el congelamiento del código base para evitar riesgos de compilación en el MVP.
