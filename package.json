@@ -1,5 +1,5 @@
 {
-	"name": "hono-spa-spike",
+	"name": "taskflow-app",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
