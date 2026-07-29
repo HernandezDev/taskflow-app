@@ -178,7 +178,7 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 - [ ] **[SYS-003] Sincronización Reactiva de Ordenamiento:** Implementación de la lógica de reordenamiento derivado en caliente en el cliente, apalancada en la *View Transitions API* para animar de forma fluida las mutaciones locales sin alterar la fuente de verdad del servidor.
 
 ### Fase 3: Post-MVP (Won't Have / Pospuesto)
-- [ ] **[SYS-002] Migración de Bundler:** Adopción de `@cloudflare/vite-plugin`. Tarea bloqueada intencionalmente hasta el congelamiento del código base para evitar riesgos de compilación en el MVP.
+- [ ] **[SYS-002] Migración de Bundler:** Adopción de `@cloudflare/vite-plugin` en reemplazo de `@hono/vite-build` y `@hono/vite-dev-server` (paridad real con el runtime de Workers en dev, vía `workerd`/Miniflare, en vez de la aproximación actual sobre Node). Tarea bloqueada intencionalmente hasta el congelamiento del código base para evitar riesgos de compilación en el MVP.
 
 ## Licencia
 
