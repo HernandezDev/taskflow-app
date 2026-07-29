@@ -9,7 +9,7 @@ Gestor de tareas simple con estados, deadlines y detección automática de tarea
 
 ## Por qué este proyecto
 
-Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de tareas), pero usado como excusa para practicar en profundidad un stack moderno de punta a punta: tipado end-to-end entre cliente y servidor, estado reactivo que evita el diffing del Virtual DOM en las mutaciones de valor, autenticación real, y despliegue serverless en el edge.
+Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de tareas), pero usado como excusa para practicar en profundidad un stack moderno de punta a punta: tipado end-to-end entre cliente y servidor, estado desacoplado del ciclo de render, autenticación real, y despliegue serverless en el edge.
 
 ## Features
 
@@ -24,12 +24,12 @@ Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de t
 
 | Capa | Tecnología | Por qué |
 |---|---|---|
-| Runtime / Deploy | **Cloudflare Workers + Pages** | Edge-first: latencia baja global, cold-start mínimo, sin servidor que mantener. |
+| Runtime / Deploy | **Cloudflare Pages** (el backend corre como Worker por debajo — ver [Notas de build](#notas-de-build)) | Latencia baja global, sin servidor que mantener, y sobre todo: frontend y backend se despliegan **juntos, automáticamente en cada commit** — no hay que correr un comando de deploy a mano ni coordinar dos despliegues separados. |
 | Framework backend | **Hono** | Liviano, pensado para runtimes edge, con RPC tipado nativo hacia el cliente. |
-| Base de datos | **Cloudflare D1** (SQLite) + **Drizzle ORM** | D1 vive en el mismo borde que el Worker; Drizzle da tipado fuerte sobre SQL sin la sobrecarga de un ORM más pesado. |
+| Base de datos | **Cloudflare D1** (SQLite) + **Drizzle ORM** | D1 comparte el entorno del Worker, sin salto de red hacia un servicio externo; Drizzle da tipado fuerte sobre SQL sin la sobrecarga de un ORM más pesado. |
 | Frontend | **Preact** | Misma API que React con un bundle mucho más chico — importante para un SPA que se sirve desde el edge. |
-| Estado | **@preact/signals** | Reactividad granular: las mutaciones de valor actualizan el DOM directamente y evitan el ciclo de diffing/reconciliación del Virtual DOM (que Preact sí tiene y usa para el resto del árbol). |
-| Routing | **preact-iso** | Router pensado específicamente para el ecosistema Preact/edge. |
+| Estado | **@preact/signals** | Desacopla la lógica del ciclo de render: se puede leer/mutar estado, o disparar un fetch al backend, sin necesitar `useEffect` atado a un componente. Como efecto colateral, las mutaciones de valor también evitan el diffing del Virtual DOM en ese nodo puntual (que Preact sí usa para el resto del árbol). |
+| Routing | **preact-iso** | Router pensado específicamente para el ecosistema Preact. |
 | Auth | **Better Auth** | Evita reinventar manejo de sesiones/tokens a mano; cliente tipado propio, separado del RPC de dominio. |
 | Validación | **Zod** (vía `@hono/zod-validator`) | Contrato de entrada validado en runtime, con inferencia de tipos hacia el cliente. |
 | Estilos | **TailwindCSS v4** (CSS-first, Lightning CSS) + **View Transitions API** | Tailwind sin archivo JS, motor nativo más rápido. Transiciones de navegación con la API nativa del navegador, sin librería externa. |
