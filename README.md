@@ -174,7 +174,12 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 
 ### Fase 2: Identidad Periférica y Estabilización (Should Have)
 - [ ] **[AUTH-001] OAuth 2.0:** Integración de inicio de sesión con Google Provider vía Better Auth, configurando credenciales de entorno en Cloudflare.
+- [ ] **[SEO-001] Landing SSG + Mover ruta raíz:** Prerenderizar una landing pública vía `preact-iso` (`additionalPrerenderRoutes`), moviendo `/` de la pantalla de login hacia la landing y reubicando el login en `/login`. Actualizar guards (`GuestRoute`/`PrivateRoute`) y redirects hardcodeados a `/`.
+- [ ] **[PWA-002] Fijar `start_url` del manifest:** Definir `start_url: "/login"` explícito (o la ruta real de entrada a la app) para que la PWA instalada abra la app, no la landing, una vez migrada la ruta raíz. *(Depende de SEO-001)*.
+- [ ] **[PWA-003] Excluir la landing del runtime caching:** Agregar regla `NetworkOnly` para la ruta de la landing en `pwa.config.ts`, ubicada *antes* de la regla `NetworkFirst` genérica de navegación, para que nunca participe del sistema de caché offline (no cumple función offline). *(Depende de SEO-001)*.
+- [ ] **[SEO-002] Verificar fallback de rutas post-migración:** Confirmar que el fallback de Hono (`app.all("*", ...)`) siga sirviendo el shell genérico de la SPA para todo lo que no sea la landing, sin que el HTML prerenderizado de `/` contamine otras rutas (deep-links). *(Depende de SEO-001)*.
 - [ ] **[SYS-001] Debug PWA:** Auditoría de instalación, registro de *Service Worker* y verificación de la estrategia de caché *offline-first*.
+- [ ] **[PWA-004] Personalizar manifest:** `name`/`description` del manifest siguen siendo texto genérico de boilerplate ("Hono SPA Template"), no específico de TaskFlow.
 - [ ] **[SYS-003] Sincronización Reactiva de Ordenamiento:** Implementación de la lógica de reordenamiento derivado en caliente en el cliente, apalancada en la *View Transitions API* para animar de forma fluida las mutaciones locales sin alterar la fuente de verdad del servidor.
 
 ### Fase 3: Post-MVP (Won't Have / Pospuesto)
