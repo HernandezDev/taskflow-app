@@ -1,9 +1,10 @@
 # TaskFlow
 
-Gestor de tareas simple con estados, deadlines y detección automática de tareas atrasadas. Full-stack, corriendo 100% en el edge de Cloudflare.
+> ⚠️ **Proyecto en desarrollo activo.** Todavía no está completo — hay features a medio terminar, decisiones que pueden cambiar, y partes del código que se van a reescribir. No lo tomes como un producto terminado; es un work-in-progress visible a propósito (ver [Roadmap](#roadmap) para el estado real de cada pieza).
+
+Gestor de tareas simple con estados, deadlines y detección automática de tareas atrasadas. Full-stack, corriendo 100% en el edge de Cloudflare. **[Demo en vivo →](https://taskflow-app-1au.pages.dev/)**
 
 <!-- ⚠️ PLACEHOLDER: agregá acá un GIF o 2-3 screenshots del flujo principal (crear tarea → cambiar estado → ver overdue). Es lo primero que un reclutador mira. -->
-<!-- ⚠️ PLACEHOLDER: agregá el link de demo en vivo si tenés uno deployado: **[Ver demo →](https://tu-deploy.pages.dev)** -->
 
 ---
 
@@ -167,10 +168,10 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 
 ### Fase 1: Flujo de Datos Core y Layout Base (Must Have)
 - [x] **[DB-001] Ordenamiento Semántico:** Inyección de `CASE WHEN` dinámico y `NULLS LAST` en D1 para garantizar la jerarquía visual de estados y fechas directamente desde el servidor.
-- [x] **[UI-002] Widget de Deadline:** Interfaz de captura (`datetime-local`) y mutación reactiva para la fecha límite de la tarea, asegurando el envío del *String ISO* simétrico consumido por el contrato de Zod (`z.coerce.date()`) en la API. *(Bloqueador de UI-001-B)*.
+- [ ] **[UI-002] Widget de Deadline:** Interfaz de captura (`datetime-local`) y mutación reactiva para la fecha límite de la tarea, asegurando el envío del *String ISO* simétrico consumido por el contrato de Zod (`z.coerce.date()`) en la API. *(Bloqueador de UI-001-B)*.
 - [x] **[UI-001-A] Dashboard Layout Base:** purga del ordenamiento local (`.sort()`) y adopción del componente optimizado `<For>` de `@preact/signals/utils`.
-- [x] **[UI-001-B] Ergonomía Táctil Mobile:** Adaptación de áreas de impacto (*touch targets*), truncamiento defensivo de textos y corrección visual de widgets para evitar desbordamientos en pantallas táctiles pequeñas.
-- [x] **[UI-003] Rollback de Red y Consistencia Local:** Mecanismo de reversión determinista del estado optimista en el modelo ante caídas de la API o fallos de sincronización con el servidor.
+- [ ] **[UI-001-B] Ergonomía Táctil Mobile:** Adaptación de áreas de impacto (*touch targets*), truncamiento defensivo de textos y corrección visual de widgets para evitar desbordamientos en pantallas táctiles pequeñas.
+- [ ] **[UI-003] Rollback de Red y Consistencia Local:** Mecanismo de reversión determinista del estado optimista en el modelo ante caídas de la API o fallos de sincronización con el servidor.
 
 ### Fase 2: Identidad Periférica y Estabilización (Should Have)
 - [ ] **[AUTH-001] OAuth 2.0:** Integración de inicio de sesión con Google Provider vía Better Auth, configurando credenciales de entorno en Cloudflare.
@@ -184,9 +185,3 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 
 ### Fase 3: Post-MVP (Won't Have / Pospuesto)
 - [ ] **[SYS-002] Migración de Bundler:** Adopción de `@cloudflare/vite-plugin` en reemplazo de `@hono/vite-build` y `@hono/vite-dev-server` (paridad real con el runtime de Workers en dev, vía `workerd`/Miniflare, en vez de la aproximación actual sobre Node). Tarea bloqueada intencionalmente hasta el congelamiento del código base para evitar riesgos de compilación en el MVP.
-- [ ] **[UI-004] Componente Nativo `Editable` (Zero-Zag):** Reemplazo del componente `@zag-js/editable` por una solución nativa basada en `@preact/signals` e inputs auto-ajustables con gestión de accesibilidad (`aria-editables`, manejo de teclas `Enter`/`Escape`). Permite avanzar en la purga final de dependencias de terceros.
-- [ ] **[UI-005] Control Nativo `RadioGroup` (Zero-Zag):** Implementación propia de control de selección de estados (para `TaskStatusControl`) utilizando botones radiales nativos u opciones semánticas estilizadas con Tailwind CSS y alimentadas por signals, eliminando completamente el paquete `@zag-js/radio-group`.
-
-## Licencia
-
-<!-- ⚠️ PLACEHOLDER: elegí una licencia (MIT es lo más común para portafolio) o quitá esta sección -->
