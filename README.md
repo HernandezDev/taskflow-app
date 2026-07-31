@@ -35,7 +35,7 @@ Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de t
 | Validación | **Zod** (vía `@hono/zod-validator`) | Contrato de entrada validado en runtime, con inferencia de tipos hacia el cliente. |
 | Estilos | **TailwindCSS v4** (CSS-first, Lightning CSS) | Sin archivo JS, motor nativo más rápido. |
 | ↳ | **View Transitions API** | Transiciones de navegación con la API nativa del navegador, sin librería externa. |
-| ↳ | **Phosphor Icons** (`@phosphor-icons/react`, vía alias `preact/compat`) | Set de íconos consistente, reusando el ecosistema de componentes de React sobre Preact sin una librería nativa aparte. 
+| ↳ | **Phosphor Icons** (`@phosphor-icons/react`, vía alias `preact/compat`) | Set de íconos consistente, reusando el ecosistema de componentes de React sobre Preact sin una librería nativa aparte. |
 | Lint/format | **Biome** | Reemplaza ESLint + Prettier con una sola herramienta más rápida. |
 
 ## Arquitectura
