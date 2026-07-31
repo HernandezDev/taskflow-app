@@ -48,36 +48,42 @@ graph TD
         State["Stores / Modelos<br/><i>@preact/signals</i>"]
         RPC["Cliente RPC de Hono<br/><i>fetch tipado + AbortSignal</i>"]
         AuthC["Cliente Better Auth<br/><i>cookies de sesión</i>"]
+        ClientGate(( ))
 
         UI -->|Lee signals / dispara acciones| State
         State -->|Actualiza DOM vía signals| UI
         State -->|Llama métodos tipados| RPC
         State -->|Login / registro / logout| AuthC
+        RPC --> ClientGate
+        AuthC --> ClientGate
     end
 
     subgraph Edge["Cloudflare (Servidor)"]
         direction TB
+        ServerGate(( ))
         API["Router Hono<br/><i>Validación: Zod</i>"]
         Auth["Better Auth<br/><i>manejo de sesión</i>"]
         ORM["Drizzle ORM"]
         D1[("Cloudflare D1 (SQLite)")]
 
+        ServerGate --> API
+        ServerGate --> Auth
         API -->|Queries| ORM
         ORM -->|Transacciones| D1
         Auth -->|Persiste sesión/usuario| D1
     end
 
-    RPC ===>|HTTP / JSON, credentials: include| API
-    AuthC ===>|HTTP / cookies| Auth
-    API -.->|Tipos inferidos: AppType| RPC
-    Auth -.->|Tipos inferidos: AuthType| AuthC
+    ClientGate ===>|HTTP / JSON+cookies, credentials: include| ServerGate
+    ServerGate -.->|Tipos inferidos: AppType + AuthType| ClientGate
 
     classDef client fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
     classDef server fill:#efebe9,stroke:#5d4037,stroke-width:2px;
     classDef database fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef gate fill:none,stroke:none;
     class UI,State,RPC,AuthC client;
     class API,Auth,ORM server;
     class D1 database;
+    class ClientGate,ServerGate gate;
 ```
 
 **Flujo de datos:**
