@@ -99,19 +99,26 @@ export const TaskModel = createModel(() => {
 	};
 
 	const deleteTask = async (id: string) => {
+		const previous = resource.data.value;
+
+		// 1. Aplicación optimista inmediata: filtramos la tarea de la UI sin esperar la red
+		resource.mutate((prevTasks) => prevTasks.filter((task) => task.id !== id));
+
 		try {
 			const res = await rpc.api.tasks[":id"].$delete({
 				param: { id },
 			});
 
 			if (!res.ok) {
-				throw new Error("Error al eliminar la tarea");
+				throw new Error("Error al eliminar la tarea en el servidor");
 			}
 
-			resource.mutate((prevTasks) => prevTasks.filter((task) => task.id !== id));
 			return true;
 		} catch (err) {
 			console.error("[TaskModel] deleteTask:", err);
+
+			// 2. Rollback de red: si falla, restauramos el snapshot previo
+			resource.mutate(() => previous);
 			return false;
 		}
 	};
