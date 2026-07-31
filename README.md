@@ -184,6 +184,8 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 
 ### Fase 3: Post-MVP (Won't Have / Pospuesto)
 - [ ] **[SYS-002] Migración de Bundler:** Adopción de `@cloudflare/vite-plugin` en reemplazo de `@hono/vite-build` y `@hono/vite-dev-server` (paridad real con el runtime de Workers en dev, vía `workerd`/Miniflare, en vez de la aproximación actual sobre Node). Tarea bloqueada intencionalmente hasta el congelamiento del código base para evitar riesgos de compilación en el MVP.
+- [ ] **[UI-004] Componente Nativo `Editable` (Zero-Zag):** Reemplazo del componente `@zag-js/editable` por una solución nativa basada en `@preact/signals` e inputs auto-ajustables con gestión de accesibilidad (`aria-editables`, manejo de teclas `Enter`/`Escape`). Permite avanzar en la purga final de dependencias de terceros.
+- [ ] **[UI-005] Control Nativo `RadioGroup` (Zero-Zag):** Implementación propia de control de selección de estados (para `TaskStatusControl`) utilizando botones radiales nativos u opciones semánticas estilizadas con Tailwind CSS y alimentadas por signals, eliminando completamente el paquete `@zag-js/radio-group`.
 
 ## Licencia
 
