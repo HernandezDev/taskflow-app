@@ -54,7 +54,8 @@ erDiagram
         integer created_at "not null, default: `(cast(unixepoch('subsecond') * 1000 as integer))`"
         integer updated_at "not null, default: `(cast(unixepoch('subsecond') * 1000 as integer))`"
     }
-account ||--o{ user : "account-user"
-session ||--o{ user : "session-user"
-task ||--|| user : "task-user"
+
+    user ||--o{ account : "user-account"
+    user ||--o{ session : "user-session"
+    user ||--o{ task : "user-task"
 ```
