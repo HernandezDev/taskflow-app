@@ -78,7 +78,7 @@ export const TaskModel = createModel(() => {
 							? task.deadline
 							: updates.deadline === null
 								? null
-								: new Date(updates.deadline).toISOString(),
+								: new Date(updates.deadline as string | number | Date).toISOString(),
 				};
 			}),
 		);
