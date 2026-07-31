@@ -33,7 +33,9 @@ Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de t
 | Routing | **preact-iso** | Router pensado específicamente para el ecosistema Preact. |
 | Auth | **Better Auth** | Evita reinventar manejo de sesiones/tokens a mano; cliente tipado propio, separado del RPC de dominio. |
 | Validación | **Zod** (vía `@hono/zod-validator`) | Contrato de entrada validado en runtime, con inferencia de tipos hacia el cliente. |
-| Estilos | **TailwindCSS v4** (CSS-first, Lightning CSS) + **View Transitions API** | Tailwind sin archivo JS, motor nativo más rápido. Transiciones de navegación con la API nativa del navegador, sin librería externa. |
+| Estilos | **TailwindCSS v4** (CSS-first, Lightning CSS) | Sin archivo JS, motor nativo más rápido. |
+| ↳ | **View Transitions API** | Transiciones de navegación con la API nativa del navegador, sin librería externa. |
+| ↳ | **Phosphor Icons** (`@phosphor-icons/react`, vía alias `preact/compat`) | Set de íconos consistente, reusando el ecosistema de componentes de React sobre Preact sin una librería nativa aparte. 
 | Lint/format | **Biome** | Reemplaza ESLint + Prettier con una sola herramienta más rápida. |
 
 ## Arquitectura
