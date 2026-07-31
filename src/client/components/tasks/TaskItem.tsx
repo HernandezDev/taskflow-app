@@ -1,7 +1,7 @@
 import { CheckIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import type { Task, UpdateTaskInput } from "../../models/TaskModel";
-import { DeadlineNativePicker } from "../ui/DeadlineNativePicker";
+import { DateTimeFieldPopover } from "../ui/DateTimeFieldPopover";
 import { Editable } from "../ui/Editable";
 import { type TaskStatus, TaskStatusControl } from "../ui/TaskStatusControl";
 
@@ -74,9 +74,9 @@ export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
             </div>
 
             <div class="shrink-0 flex items-center gap-1">
-                <DeadlineNativePicker
-                    taskId={task.id}
-                    currentDeadline={task.deadline || null}
+                <DateTimeFieldPopover
+                    id={task.id}
+                    value={task.deadline || null}
                     onUpdate={handleDeadlineUpdate}
                 />
 
