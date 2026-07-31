@@ -43,7 +43,7 @@ export const TaskModel = createModel(() => {
 	});
 
 	// 4. ACCIONES MUTABLES
-	const addTask = async (title: string, deadline?: number) => {
+	const addTask = async (title: string, deadline?: string | null) => {
 		try {
 			const res = await rpc.api.tasks.$post({
 				json: { title, deadline },
@@ -54,7 +54,6 @@ export const TaskModel = createModel(() => {
 			}
 
 			const json = await res.json();
-
 			resource.mutate((prevTasks) => [...prevTasks, json.data]);
 			return true;
 		} catch (err) {
@@ -73,12 +72,8 @@ export const TaskModel = createModel(() => {
 				return {
 					...task,
 					...updates,
-					deadline:
-						updates.deadline === undefined
-							? task.deadline
-							: updates.deadline === null
-								? null
-								: new Date(updates.deadline as string | number | Date).toISOString(),
+					// Limpio de casters innecesarios (as string | number | Date)
+					deadline: updates.deadline === undefined ? task.deadline : updates.deadline,
 				};
 			}),
 		);
