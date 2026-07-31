@@ -68,7 +68,7 @@ export function DeadlineDatePicker({ taskId, currentDeadline, onUpdate }: Deadli
                                             <td key={j} {...api.getDayTableCellProps({ value })}>
                                                 <div
                                                     {...api.getDayTableCellTriggerProps({ value })}
-                                                    class="min-w-11 min-h-11 flex items-center justify-center rounded-full text-sm cursor-pointer data-selected:bg-blue-600 data-selected:text-white data-today:font-bold data-outside-range:text-gray-300"
+                                                    class="min-w-11 min-h-11 flex items-center justify-center rounded-full text-sm cursor-pointer zag-selected:bg-blue-600 zag-selected:text-white zag-today:font-bold zag-outside-range:text-gray-300"
                                                 >
                                                     {value.day}
                                                 </div>

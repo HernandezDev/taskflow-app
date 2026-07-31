@@ -11,12 +11,15 @@
 @custom-variant zag-invalid (&[data-invalid]);
 @custom-variant zag-disabled (&[data-disabled]);
 @custom-variant zag-checked (&[data-state=checked]);
+@custom-variant zag-selected (&[data-selected]);
+@custom-variant zag-today (&[data-today]);
+@custom-variant zag-outside-range (&[data-outside-range]);
 
 /* 2. VARIANTES ZAG (De Grupo) - ¡Refactorizadas para que Biome las entienda! */
 @custom-variant group-zag-focus (.group[data-focus] &);
 @custom-variant group-zag-edit (.group[data-edit] &);
 @custom-variant group-zag-disabled (.group[data-disabled] &);
-
+@custom-variant group-zag-checked (.group[data-state=checked] &);
 body {
   background-color: #f3f4f6;
 }
