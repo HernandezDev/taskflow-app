@@ -73,8 +73,7 @@ graph TD
         Auth -->|Persiste sesión/usuario| D1
     end
 
-    ClientGate ===>|HTTP / JSON+cookies, credentials: include| ServerGate
-    ServerGate -.->|Tipos inferidos: AppType + AuthType| ClientGate
+    ClientGate ===>|"Petición HTTP (JSON + cookies) ⇒⇐ Tipos inferidos: AppType + AuthType"| ServerGate
 
     classDef client fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
     classDef server fill:#efebe9,stroke:#5d4037,stroke-width:2px;
@@ -84,6 +83,8 @@ graph TD
     class API,Auth,ORM server;
     class D1 database;
     class ClientGate,ServerGate gate;
+
+
 ```
 
 **Flujo de datos:**
