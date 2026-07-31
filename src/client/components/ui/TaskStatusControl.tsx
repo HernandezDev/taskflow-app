@@ -13,9 +13,9 @@ interface TaskStatusControlProps {
 }
 
 const STATUS_OPTIONS: { label: string; value: TaskStatus }[] = [
-    { label: "Nueva", value: "PENDING" },
-    { label: "Curso", value: "IN_PROGRESS" },
-    { label: "Lista", value: "COMPLETED" },
+    { label: "Pendiente", value: "PENDING" },
+    { label: "Haciendo", value: "IN_PROGRESS" },
+    { label: "Hecha", value: "COMPLETED" },
 ];
 
 export function TaskStatusControl({ taskId, currentStatus, onUpdate }: TaskStatusControlProps) {

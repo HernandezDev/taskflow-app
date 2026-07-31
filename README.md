@@ -1,7 +1,5 @@
 # TaskFlow
 
-> ⚠️ **Placeholder de nombre:** el `package.json` todavía dice `hono-spa-spike`. Usé "TaskFlow" acá porque aparece como prefijo en el `localStorage` (`taskflow_offline_tasks`). Cambialo por el nombre final antes de publicar, y actualizá el campo `name` en `package.json` para que coincida.
-
 Gestor de tareas simple con estados, deadlines y detección automática de tareas atrasadas. Full-stack, corriendo 100% en el edge de Cloudflare.
 
 <!-- ⚠️ PLACEHOLDER: agregá acá un GIF o 2-3 screenshots del flujo principal (crear tarea → cambiar estado → ver overdue). Es lo primero que un reclutador mira. -->
@@ -11,7 +9,7 @@ Gestor de tareas simple con estados, deadlines y detección automática de tarea
 
 ## Por qué este proyecto
 
-Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de tareas), pero usado como excusa para practicar en profundidad un stack moderno de punta a punta: tipado end-to-end entre cliente y servidor, estado reactivo que evita el diffing del Virtual DOM en las mutaciones de valor, autenticación real, y despliegue serverless en el edge.
+Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de tareas), pero usado como excusa para practicar en profundidad un stack moderno de punta a punta: tipado end-to-end entre cliente y servidor, estado desacoplado del ciclo de render, autenticación real, y despliegue serverless en el edge.
 
 ## Features
 
@@ -26,15 +24,15 @@ Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de t
 
 | Capa | Tecnología | Por qué |
 |---|---|---|
-| Runtime / Deploy | **Cloudflare Workers + Pages** | Edge-first: latencia baja global, cold-start mínimo, sin servidor que mantener. |
+| Runtime / Deploy | **Cloudflare Pages** (el backend corre como Worker por debajo — ver [Notas de build](#notas-de-build)) | Latencia baja global, sin servidor que mantener, y sobre todo: frontend y backend se despliegan **juntos, automáticamente en cada commit** — no hay que correr un comando de deploy a mano ni coordinar dos despliegues separados. |
 | Framework backend | **Hono** | Liviano, pensado para runtimes edge, con RPC tipado nativo hacia el cliente. |
-| Base de datos | **Cloudflare D1** (SQLite) + **Drizzle ORM** | D1 vive en el mismo borde que el Worker; Drizzle da tipado fuerte sobre SQL sin la sobrecarga de un ORM más pesado. |
+| Base de datos | **Cloudflare D1** (SQLite) + **Drizzle ORM** | D1 comparte el entorno del Worker, sin salto de red hacia un servicio externo; Drizzle da tipado fuerte sobre SQL sin la sobrecarga de un ORM más pesado. |
 | Frontend | **Preact** | Misma API que React con un bundle mucho más chico — importante para un SPA que se sirve desde el edge. |
-| Estado | **@preact/signals** | Reactividad granular: las mutaciones de valor actualizan el DOM directamente y evitan el ciclo de diffing/reconciliación del Virtual DOM (que Preact sí tiene y usa para el resto del árbol). |
-| Routing | **preact-iso** | Router pensado específicamente para el ecosistema Preact/edge. |
+| Estado | **@preact/signals** | Desacopla la lógica del ciclo de render: se puede leer/mutar estado, o disparar un fetch al backend, sin necesitar `useEffect` atado a un componente. Como efecto colateral, las mutaciones de valor también evitan el diffing del Virtual DOM en ese nodo puntual (que Preact sí usa para el resto del árbol). |
+| Routing | **preact-iso** | Router pensado específicamente para el ecosistema Preact. |
 | Auth | **Better Auth** | Evita reinventar manejo de sesiones/tokens a mano; cliente tipado propio, separado del RPC de dominio. |
 | Validación | **Zod** (vía `@hono/zod-validator`) | Contrato de entrada validado en runtime, con inferencia de tipos hacia el cliente. |
-| Estilos | **TailwindCSS v4** (CSS-first, Lightning CSS) | Configuración sin archivo JS, motor nativo más rápido. |
+| Estilos | **TailwindCSS v4** (CSS-first, Lightning CSS) + **View Transitions API** | Tailwind sin archivo JS, motor nativo más rápido. Transiciones de navegación con la API nativa del navegador, sin librería externa. |
 | Lint/format | **Biome** | Reemplaza ESLint + Prettier con una sola herramienta más rápida. |
 
 ## Arquitectura
@@ -113,6 +111,29 @@ src/
 
 El proyecto compila a un único deploy de Cloudflare Pages a partir de **dos pasadas de Vite** sobre el mismo `vite.config.ts`: una en modo `client` (genera el SPA en `dist/`) y otra en modo `server` (empaqueta el backend de Hono como `dist/_worker.js` vía `@hono/vite-build/cloudflare-pages`). El script `build` las ejecuta en ese orden. En desarrollo, `@hono/vite-dev-server` sirve ambos desde el mismo proceso, enrutando todo lo que no empiece con `/api` como ruta del SPA.
 
+## Variables de entorno
+
+El proyecto necesita un archivo `.dev.vars` en la raíz para desarrollo local (no se versiona — agregado a `.gitignore`). Cloudflare Pages/Workers lo detecta automáticamente vía `wrangler dev`.
+
+```bash
+# .dev.vars
+BETTER_AUTH_SECRET=<generar con el comando de abajo>
+```
+
+Generar un secreto seguro:
+
+```bash
+openssl rand -base64 32
+```
+
+Para producción/preview, el mismo secreto se configura como variable de entorno **encriptada** en el dashboard de Cloudflare Pages (Settings → Environment variables → Secret), o vía:
+
+```bash
+npx wrangler pages secret put BETTER_AUTH_SECRET --project-name taskflow-app
+```
+
+**Nunca** commitear este valor ni ponerlo en `wrangler.jsonc` bajo `vars` (esa sección es para variables públicas, no secretas — `wrangler.jsonc` sí se versiona).
+
 ## Correr el proyecto localmente
 
 ```bash
@@ -145,83 +166,25 @@ El proyecto tiene disponible el script `pnpm run cf-typegen` (que corre `wrangle
 ## Roadmap
 
 ### Fase 1: Flujo de Datos Core y Layout Base (Must Have)
-- [ ] **[DB-001] Ordenamiento Semántico:** Inyección de `ORDER BY status ASC, deadline ASC NULLS LAST` en D1 para garantizar la jerarquía visual desde el servidor.
-- [ ] **[UI-002] Widget de Deadline:** Interfaz de captura y mutación reactiva para la fecha límite de la tarea, asegurando la transformación del *input* del cliente al contrato numérico (*Unix timestamp*) requerido por la API. *(Bloqueador de UI-001)*.
-- [ ] **[UI-001] Dashboard Móvil:** Refactorización a *Responsive Grid* para alojar los widgets y optimizar la usabilidad en pantallas pequeñas con los datos semánticamente ordenados.
+- [x] **[DB-001] Ordenamiento Semántico:** Inyección de `CASE WHEN` dinámico y `NULLS LAST` en D1 para garantizar la jerarquía visual de estados y fechas directamente desde el servidor.
+- [x] **[UI-002] Widget de Deadline:** Interfaz de captura (`datetime-local`) y mutación reactiva para la fecha límite de la tarea, asegurando el envío del *String ISO* simétrico consumido por el contrato de Zod (`z.coerce.date()`) en la API. *(Bloqueador de UI-001-B)*.
+- [x] **[UI-001-A] Dashboard Layout Base:** purga del ordenamiento local (`.sort()`) y adopción del componente optimizado `<For>` de `@preact/signals/utils`.
+- [ ] **[UI-001-B] Ergonomía Táctil Mobile:** Adaptación de áreas de impacto (*touch targets*), truncamiento defensivo de textos y corrección visual de widgets para evitar desbordamientos en pantallas táctiles pequeñas.
+- [x] **[UI-003] Rollback de Red y Consistencia Local:** Mecanismo de reversión determinista del estado optimista en el modelo ante caídas de la API o fallos de sincronización con el servidor.
 
 ### Fase 2: Identidad Periférica y Estabilización (Should Have)
 - [ ] **[AUTH-001] OAuth 2.0:** Integración de inicio de sesión con Google Provider vía Better Auth, configurando credenciales de entorno en Cloudflare.
+- [ ] **[SEO-001] Landing SSG + Mover ruta raíz:** Prerenderizar una landing pública vía `preact-iso` (`additionalPrerenderRoutes`), moviendo `/` de la pantalla de login hacia la landing y reubicando el login en `/login`. Actualizar guards (`GuestRoute`/`PrivateRoute`) y redirects hardcodeados a `/`.
+- [ ] **[PWA-002] Fijar `start_url` del manifest:** Definir `start_url: "/login"` explícito (o la ruta real de entrada a la app) para que la PWA instalada abra la app, no la landing, una vez migrada la ruta raíz. *(Depende de SEO-001)*.
+- [ ] **[PWA-003] Excluir la landing del runtime caching:** Agregar regla `NetworkOnly` para la ruta de la landing en `pwa.config.ts`, ubicada *antes* de la regla `NetworkFirst` genérica de navegación, para que nunca participe del sistema de caché offline (no cumple función offline). *(Depende de SEO-001)*.
+- [ ] **[SEO-002] Verificar fallback de rutas post-migración:** Confirmar que el fallback de Hono (`app.all("*", ...)`) siga sirviendo el shell genérico de la SPA para todo lo que no sea la landing, sin que el HTML prerenderizado de `/` contamine otras rutas (deep-links). *(Depende de SEO-001)*.
 - [ ] **[SYS-001] Debug PWA:** Auditoría de instalación, registro de *Service Worker* y verificación de la estrategia de caché *offline-first*.
+- [ ] **[PWA-004] Personalizar manifest:** `name`/`description` del manifest siguen siendo texto genérico de boilerplate ("Hono SPA Template"), no específico de TaskFlow.
+- [ ] **[SYS-003] Sincronización Reactiva de Ordenamiento:** Implementación de la lógica de reordenamiento derivado en caliente en el cliente, apalancada en la *View Transitions API* para animar de forma fluida las mutaciones locales sin alterar la fuente de verdad del servidor.
 
 ### Fase 3: Post-MVP (Won't Have / Pospuesto)
-- [ ] **[SYS-002] Migración de Bundler:** Adopción de `@cloudflare/vite-plugin`. Tarea bloqueada intencionalmente hasta el congelamiento del código base para evitar riesgos de compilación en el MVP.
+- [ ] **[SYS-002] Migración de Bundler:** Adopción de `@cloudflare/vite-plugin` en reemplazo de `@hono/vite-build` y `@hono/vite-dev-server` (paridad real con el runtime de Workers en dev, vía `workerd`/Miniflare, en vez de la aproximación actual sobre Node). Tarea bloqueada intencionalmente hasta el congelamiento del código base para evitar riesgos de compilación en el MVP.
 
 ## Licencia
 
 <!-- ⚠️ PLACEHOLDER: elegí una licencia (MIT es lo más común para portafolio) o quitá esta sección -->
-
-# Referencia de Códigos de Error - Better Auth
-
-*Listado completo de códigos de error extraídos de los tipos literales de la librería (`BetterAuthErrorCode`).*
-
-## Autenticación y Credenciales
-- `INVALID_PASSWORD`
-- `INVALID_EMAIL`
-- `INVALID_EMAIL_OR_PASSWORD`
-- `CREDENTIAL_ACCOUNT_NOT_FOUND`
-- `ACCOUNT_NOT_FOUND`
-- `PASSWORD_TOO_SHORT`
-- `PASSWORD_TOO_LONG`
-- `USER_ALREADY_HAS_PASSWORD`
-- `PASSWORD_ALREADY_SET`
-
-## Usuarios y Sesiones
-- `USER_NOT_FOUND`
-- `INVALID_USER`
-- `FAILED_TO_CREATE_USER`
-- `FAILED_TO_UPDATE_USER`
-- `USER_ALREADY_EXISTS`
-- `USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL`
-- `FAILED_TO_GET_USER_INFO`
-- `FAILED_TO_CREATE_SESSION`
-- `FAILED_TO_GET_SESSION`
-- `SESSION_EXPIRED`
-- `SESSION_NOT_FRESH`
-
-## Verificación y Emails
-- `USER_EMAIL_NOT_FOUND`
-- `EMAIL_NOT_VERIFIED`
-- `EMAIL_CAN_NOT_BE_UPDATED`
-- `CHANGE_EMAIL_DISABLED`
-- `VERIFICATION_EMAIL_NOT_ENABLED`
-- `EMAIL_ALREADY_VERIFIED`
-- `EMAIL_MISMATCH`
-- `FAILED_TO_CREATE_VERIFICATION`
-
-## Proveedores Sociales (OAuth)
-- `SOCIAL_ACCOUNT_ALREADY_LINKED`
-- `PROVIDER_NOT_FOUND`
-- `LINKED_ACCOUNT_ALREADY_EXISTS`
-- `FAILED_TO_UNLINK_LAST_ACCOUNT`
-
-## Tokens y URLs de Retorno (Callbacks)
-- `INVALID_TOKEN`
-- `TOKEN_EXPIRED`
-- `ID_TOKEN_NOT_SUPPORTED`
-- `INVALID_ORIGIN`
-- `INVALID_CALLBACK_URL`
-- `INVALID_REDIRECT_URL`
-- `INVALID_ERROR_CALLBACK_URL`
-- `INVALID_NEW_USER_CALLBACK_URL`
-- `MISSING_OR_NULL_ORIGIN`
-- `CALLBACK_URL_REQUIRED`
-
-## Validaciones y Errores Internos de API
-- `FIELD_NOT_ALLOWED`
-- `ASYNC_VALIDATION_NOT_SUPPORTED`
-- `VALIDATION_ERROR`
-- `MISSING_FIELD`
-- `METHOD_NOT_ALLOWED_DEFER_SESSION_REQUIRED`
-- `BODY_MUST_BE_AN_OBJECT`
-- `CROSS_SITE_NAVIGATION_LOGIN_BLOCKED`
-

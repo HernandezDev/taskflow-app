@@ -43,7 +43,7 @@ export const TaskModel = createModel(() => {
 	});
 
 	// 4. ACCIONES MUTABLES
-	const addTask = async (title: string, deadline?: number) => {
+	const addTask = async (title: string, deadline?: string | null) => {
 		try {
 			const res = await rpc.api.tasks.$post({
 				json: { title, deadline },
@@ -54,7 +54,6 @@ export const TaskModel = createModel(() => {
 			}
 
 			const json = await res.json();
-
 			resource.mutate((prevTasks) => [...prevTasks, json.data]);
 			return true;
 		} catch (err) {
@@ -73,12 +72,8 @@ export const TaskModel = createModel(() => {
 				return {
 					...task,
 					...updates,
-					deadline:
-						updates.deadline === undefined
-							? task.deadline
-							: updates.deadline === null
-								? null
-								: new Date(updates.deadline).toISOString(),
+					// Limpio de casters innecesarios (as string | number | Date)
+					deadline: updates.deadline === undefined ? task.deadline : updates.deadline,
 				};
 			}),
 		);
@@ -104,19 +99,26 @@ export const TaskModel = createModel(() => {
 	};
 
 	const deleteTask = async (id: string) => {
+		const previous = resource.data.value;
+
+		// 1. Aplicación optimista inmediata: filtramos la tarea de la UI sin esperar la red
+		resource.mutate((prevTasks) => prevTasks.filter((task) => task.id !== id));
+
 		try {
 			const res = await rpc.api.tasks[":id"].$delete({
 				param: { id },
 			});
 
 			if (!res.ok) {
-				throw new Error("Error al eliminar la tarea");
+				throw new Error("Error al eliminar la tarea en el servidor");
 			}
 
-			resource.mutate((prevTasks) => prevTasks.filter((task) => task.id !== id));
 			return true;
 		} catch (err) {
 			console.error("[TaskModel] deleteTask:", err);
+
+			// 2. Rollback de red: si falla, restauramos el snapshot previo
+			resource.mutate(() => previous);
 			return false;
 		}
 	};
