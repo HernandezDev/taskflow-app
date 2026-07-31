@@ -1,6 +1,7 @@
 import { TrashIcon } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import type { Task, UpdateTaskInput } from "../../models/TaskModel";
+import { DeadlineNativePicker } from "../ui/DeadlineNativePicker";
 import { Editable } from "../ui/Editable";
 import { type TaskStatus, TaskStatusControl } from "../ui/TaskStatusControl";
 
@@ -35,6 +36,11 @@ export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
         return await onUpdate(task.id, { title: trimmedTitle });
     };
 
+    // Adaptador de Contrato para el Selector Nativo
+    const handleDeadlineUpdate = async (id: string, deadline: string | null): Promise<boolean> => {
+        return await onUpdate(id, { deadline });
+    };
+
     return (
         <div
             class={`
@@ -57,12 +63,24 @@ export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
 
                 {task.deadline && (
                     <span class="text-xs text-gray-400 mt-1 block">
-                        Vence: {new Date(task.deadline).toLocaleDateString()}
+                        Vence: {
+                            new Intl.DateTimeFormat(navigator.language, { 
+                                dateStyle: 'medium', 
+                                timeStyle: 'short' 
+                            }).format(new Date(task.deadline))
+                        }
                     </span>
                 )}
             </div>
 
-            <div class="shrink-0">
+            {/* Zona de Acciones: Conectado DeadlineNativePicker y Botón de Borrado */}
+            <div class="shrink-0 flex items-center gap-1">
+                <DeadlineNativePicker
+                    taskId={task.id}
+                    currentDeadline={task.deadline || null}
+                    onUpdate={handleDeadlineUpdate}
+                />
+
                 <button
                     type="button"
                     onClick={handleDelete}
