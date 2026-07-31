@@ -10,11 +10,18 @@ interface DeadlineNativePickerProps {
 export function DeadlineNativePicker({ taskId, currentDeadline, onUpdate }: DeadlineNativePickerProps) {
     const isOpen = useSignal(false);
 
-    const getInitialDate = (iso: string | null) => {
-        if (!iso) return "";
-        const d = new Date(iso);
-        return Number.isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
-    };
+    const getInitialDate = (iso: string | null): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+
+    // 'en-CA' es un hack para obtener el formato YYYY-MM-DD 
+    return new Intl.DateTimeFormat("en-CA", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(d);
+};;
 
     const getInitialTime = (iso: string | null) => {
         if (!iso) return "";
