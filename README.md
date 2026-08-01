@@ -9,8 +9,15 @@ Gestor de tareas simple con estados, deadlines y detección automática de tarea
 ---
 
 ## Por qué este proyecto
-
+ 
 Es un proyecto de aprendizaje deliberadamente simple en su dominio (un CRUD de tareas), pero usado como excusa para practicar en profundidad un stack moderno de punta a punta: tipado end-to-end entre cliente y servidor, estado desacoplado del ciclo de render, autenticación real, y despliegue serverless en el edge.
+ 
+Dos decisiones técnicas concretas sostienen esas ideas:
+ 
+**RPC tipado (Hono).** Aprovecha la inferencia de tipos de TypeScript para compartir el contrato entre backend y frontend sin generar código aparte ni mantener tipos duplicados a mano — el cliente conoce automáticamente la forma exacta de cada respuesta del servidor.
+ 
+**Signals (`@preact/signals`).** Separan la lógica de los datos del ciclo de render, lo que habilita dos usos distintos: gestión de estado global de larga duración (la sesión del usuario, accesible desde cualquier parte sin prop drilling), y "modelos" locales por pantalla — datos + acciones agrupados que, a diferencia de un hook, se crean una sola vez y persisten mientras el componente está montado, en vez de re-ejecutarse en cada render.
+
 
 ## Features
 
