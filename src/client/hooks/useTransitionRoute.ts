@@ -9,24 +9,26 @@ export function useTransitionRoute() {
 	const { route } = useLocation();
 
 	const navigate = (path: string, options?: TransitionOptions) => {
-		// Valores por defecto estructurados
 		const { replace = false, direction = "forward" } = options || {};
 
-		// Fallback para navegadores antiguos
 		if (!document.startViewTransition) {
-			route(path, replace); // Pasamos 'replace' nativamente
+			route(path, replace);
 			return;
 		}
 
-		// Si vamos hacia atrás, "marcamos" el documento
 		if (direction === "backward") {
 			document.documentElement.classList.add("back-transition");
 		}
 
-		// Ejecutamos la transición pasándole el parámetro 'replace' a preact-iso
 		const transition = document.startViewTransition(() => route(path, replace));
 
-		// Limpiamos la clase cuando la animación haya terminado
+		// La API cancela automáticamente una transición si otra arranca antes de
+		// que termine (comportamiento normal del spec cuando hay navegaciones
+		// encadenadas rápido, ej. un guard de auth seguido de una navegación
+		// explícita). En Firefox/Safari esto rechaza `finished` con AbortError/
+		// DOMException — lo silenciamos a propósito, no es un error real.
+		transition.finished.catch(() => {});
+
 		transition.finished.finally(() => {
 			document.documentElement.classList.remove("back-transition");
 		});
