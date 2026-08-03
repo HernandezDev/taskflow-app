@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 
 interface TaskQuickAddProps {
-    onAdd: (title: string, deadline?: number) => Promise<boolean>;
+    onAdd: (title: string, deadline?: string | null) => Promise<boolean>;
 }
 
 export function TaskQuickAdd({ onAdd }: TaskQuickAddProps) {
