@@ -4,8 +4,6 @@ import adapter from "@hono/vite-dev-server/cloudflare";
 import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
-import { VitePWA } from "vite-plugin-pwa";
-import { pwaOptions } from "./pwa.config"; // <-- 1. Importamos tu configuración aislada
 
 export default defineConfig(({ mode }) => {
 	// ---------------------------------------------------------
@@ -36,7 +34,6 @@ export default defineConfig(({ mode }) => {
 		plugins: [
 			tailwindcss(),
 			preact(),
-			VitePWA(pwaOptions),
 			devServer({
 				adapter,
 				entry: "src/server/index.ts",
