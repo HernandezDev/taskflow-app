@@ -14,23 +14,23 @@ export function LoginScreen() {
   const errorLocal = useSignal<string | null>(null);
 
   const handleSubmit = async (e: Event) => {
-    e.preventDefault(); // Evita que la página se recargue
-    if (authStore.isPending.value) return; // Evita doble envío
+    e.preventDefault();
+    if (authStore.isPending.value) return;
 
     errorLocal.value = null;
 
     try {
-      const { error } = await authStore.login(email.value, password.value);
-
-      if (error) {
-        errorLocal.value = translateErrorAuth(error);
-      } else {
-        route("/dashboard");
-      }
+        const { error } = await authStore.login(email.value, password.value);
+        if (error) {
+            errorLocal.value = translateErrorAuth(error);
+        }
+        // Sin route("/dashboard") acá — GuestRoute redirige solo al detectar
+        // isAuthenticated. Tener dos navegadores compitiendo por la misma
+        // ruta era la causa del bug de la animación (ver AGENTS.md / UI-006).
     } catch (err) {
-      errorLocal.value = translateErrorAuth(err);
+        errorLocal.value = translateErrorAuth(err);
     }
-  };
+};
 
   return (
     <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">

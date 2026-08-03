@@ -1,7 +1,7 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
 import { useSignalEffect } from "@preact/signals";
 import type { ComponentType } from "preact";
-import { useLocation } from "preact-iso";
+import { useTransitionRoute } from "../../hooks/useTransitionRoute";
 import { authStore } from "../../stores/authStore";
 
 export interface RouteWrapperProps {
@@ -14,20 +14,17 @@ export interface RouteWrapperProps {
 }
 
 export function GuestRoute({ component: Component, ...rest }: RouteWrapperProps) {
-    const { route } = useLocation();
+    const navigate = useTransitionRoute();
 
-    // 1. Suscripción Atómica
     useSignalEffect(() => {
         const isInit = authStore.isInitializing.value;
         const isAuth = authStore.isAuthenticated.value;
 
-        // Si terminó de verificar y TIENE sesión -> Redirigir al Dashboard
         if (!isInit && isAuth) {
-            route("/dashboard", true);
+            navigate("/dashboard", { replace: true });
         }
     });
 
-    // 2. Bloqueo Visual: Leer .value
     const isInit = authStore.isInitializing.value;
     const isAuth = authStore.isAuthenticated.value;
 

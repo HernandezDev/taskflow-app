@@ -1,7 +1,7 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
 import { useSignalEffect } from "@preact/signals";
 import type { ComponentType } from "preact";
-import { useLocation } from "preact-iso";
+import { useTransitionRoute } from "../../hooks/useTransitionRoute";
 import { authStore } from "../../stores/authStore";
 
 export interface RouteWrapperProps {
@@ -14,7 +14,7 @@ export interface RouteWrapperProps {
 }
 
 export function PrivateRoute({ component: Component, ...rest }: RouteWrapperProps) {
-    const { route } = useLocation();
+    const navigate = useTransitionRoute();
 
     // 1. Suscripción Atómica: Reacciona inmediatamente cuando las señales mutan
     useSignalEffect(() => {
@@ -23,7 +23,7 @@ export function PrivateRoute({ component: Component, ...rest }: RouteWrapperProp
 
         // Si ya terminamos de inicializar y NO hay sesión válida -> Expulsión determinista
         if (!isInit && !isAuth) {
-            route("/", true);
+            navigate("/", { replace: true });
         }
     });
 
